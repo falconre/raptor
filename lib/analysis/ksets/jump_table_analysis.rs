@@ -56,7 +56,8 @@ pub fn jump_table_analysis(
                                    .ok_or("Failed to get kset value")? {
                     let condition =
                         il::Expression::cmpeq(
-                            target_scalar.clone().into(),
+                            il::scalar(target_scalar.name(),
+                                       target_scalar.bits()).into(),
                             address.clone().into())?;
                     let jump_table_entry =
                         JumpTableEntry::new(
@@ -227,10 +228,11 @@ impl State {
     fn eval(&self, expression: &ir::Expression<KSet>) -> Result<KSet> {
         Ok(match expression {
             ir::Expression::LValue(lvalue) => match lvalue.as_ref() {
-                ir::LValue::Variable(variable) =>
+                ir::LValue::Variable(variable) => {
                     self.get(variable)
                         .map(|v| v.clone())
-                        .unwrap_or(KSet::new_top(variable.bits())),
+                        .unwrap_or(KSet::new_top(variable.bits()))
+                }
                 ir::LValue::Dereference(dereference) =>
                     KSet::new_top(dereference.bits())
             },
@@ -271,7 +273,8 @@ impl State {
                 self.eval(lhs)?.cmplts(&self.eval(rhs)?)?,
             ir::Expression::Cmpltu(lhs, rhs) =>
                 self.eval(lhs)?.cmpltu(&self.eval(rhs)?)?,
-            ir::Expression::Zext(bits, rhs) => self.eval(rhs)?.zext(*bits)?,
+            ir::Expression::Zext(bits, rhs) =>
+                self.eval(rhs)?.zext(*bits)?,
             ir::Expression::Sext(bits, rhs) => self.eval(rhs)?.sext(*bits)?,
             ir::Expression::Trun(bits, rhs) => self.eval(rhs)?.trun(*bits)?,
             ir::Expression::Ite(cond, then, else_) =>
@@ -333,6 +336,8 @@ impl<'f, 'j> fixed_point::FixedPointAnalysis<'f, State, ir::Constant> for JumpTa
                 match instruction.operation() {
                     ir::Operation::Assign { dst, src } => {
                         let src = state.eval(&src.into())?;
+
+                        assert!(dst.bits() == src.bits());
                         state.set(dst.clone(), src);
                     },
                     ir::Operation::Branch { .. } |

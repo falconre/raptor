@@ -14,7 +14,8 @@ mod operation;
 mod program;
 mod reference;
 mod rvalue;
-// mod stack_pointer;
+mod scalar;
+mod stack_variable;
 mod variable;
 
 pub use self::block::Block;
@@ -34,10 +35,10 @@ pub use self::operation::Operation;
 pub use self::reference::Reference;
 pub use self::rvalue::RValue;
 pub use self::program::Program;
-// pub use self::stack_pointer::StackPointer;
-pub use self::variable::{StackVariable, Variable};
+pub use self::scalar::Scalar;
+pub use self::stack_variable::StackVariable;
+pub use self::variable::Variable;
 
-pub type Scalar = ::falcon::il::Scalar;
 pub type Constant = ::falcon::il::Constant;
 
 use error::*;

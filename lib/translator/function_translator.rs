@@ -299,8 +299,8 @@ impl<'t> FunctionTranslator<'t> {
                 //     }
                 // }
 
-                if let Some(si) = state.variable(&il::scalar("$a2", 32).into()) {
-                    si_comments.push(format!("$a2={}", si));
+                if let Some(si) = state.variable(&ir::scalar("temp_0.0", 32).into()) {
+                    si_comments.push(format!("temp_0.0={}", si));
                 }
 
                 instruction.set_comment(Some(si_comments.join(", ")));
@@ -357,7 +357,6 @@ impl<'t> FunctionTranslator<'t> {
                 self.remove_outgoing_transient_assignments(&function_2)?;
 
             if function == function_2 {
-                function = function_2;
                 break;
             }
             else {
@@ -392,6 +391,9 @@ impl<'t> FunctionTranslator<'t> {
             if jump_tables.len() == 0  {
                 return Ok(function2);
             }
+            else {
+                println!("jump_tables.len() = {}", jump_tables.len());
+            }
 
             // Create manual edges for the extended lifter
             let mut manual_edges = Vec::new();
@@ -421,6 +423,17 @@ impl<'t> FunctionTranslator<'t> {
 
             function =
                 ir::Function::<ir::Constant>::from_il(&il_function)?;
+
+            // Block/instruction indices may change.... so we'll rerun jump
+            // table analysis, and that way we know we have valid values for
+            // this currently lifted function.
+            let jump_tables = analysis::ksets::jump_table_analysis(
+                &function,
+                &strided_intervals,
+                self.ti().backing()
+            )?;
+
+            println!("jump_tables len={}", jump_tables.len());
 
             // Find the branches that correspond to jump table entries
             for jump_table in &jump_tables {

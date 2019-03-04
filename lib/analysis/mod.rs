@@ -8,6 +8,7 @@ pub mod stack_pointer_offsets;
 pub mod strided_intervals;
 pub mod transient_assignments;
 
+mod argument_identification;
 mod dead_code_elimination;
 mod def_use;
 mod location_set;
@@ -16,6 +17,7 @@ mod reaching_definitions;
 mod use_def;
 mod variable_use_def;
 
+pub use self::argument_identification::argument_identification;
 pub use self::constants::Constant;
 pub use self::dead_code_elimination::dead_code_elimination;
 pub use self::def_use::def_use;

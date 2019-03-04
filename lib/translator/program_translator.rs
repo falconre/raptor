@@ -157,7 +157,7 @@ impl<'t> ProgramTranslator<'t> {
     }
 
     pub fn stack_pointer(&self) -> ir::Scalar {
-        self.architecture().stack_pointer()
+        self.architecture().stack_pointer().into()
     }
 
     pub fn symbol(&self, address: u64) -> Option<&Symbol> {

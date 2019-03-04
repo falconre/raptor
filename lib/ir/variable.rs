@@ -3,66 +3,16 @@ use ir::*;
 use std::fmt;
 
 
-/// A stack variable is a variable at a set location on the stack
-#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
-pub struct StackVariable {
-    offset: isize,
-    bits: usize
-}
-
-
-impl StackVariable {
-    pub fn new(offset: isize, bits: usize) -> StackVariable {
-        StackVariable {
-            offset: offset,
-            bits: bits
-        }
-    }
-
-    pub fn offset(&self) -> isize { self.offset }
-    pub fn bits(&self) -> usize { self.bits }
-
-    pub fn name(&self) -> String {
-        if self.offset() < 0 {
-            format!("var_0x{:X}", self.offset() * -1)
-        }
-        else {
-            format!("arg_0x{:X}", self.offset())
-        }
-    }
-}
-
-
-impl Into<Variable> for StackVariable {
-    fn into(self) -> Variable {
-        Variable::StackVariable(self)
-    }
-}
-
-impl<V: Value> Into<Expression<V>> for StackVariable {
-    fn into(self) -> Expression<V> {
-        Expression::LValue(Box::new(LValue::Variable(self.into())))
-    }
-}
-
-
-impl fmt::Display for StackVariable {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}:{}", self.name(), self.bits())
-    }
-}
-
-
 /// Multiple types of variables
 #[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum Variable {
-    Scalar(il::Scalar),
+    Scalar(Scalar),
     StackVariable(StackVariable)
 }
 
 
 impl Variable {
-    pub fn scalar(&self) -> Option<&il::Scalar> {
+    pub fn scalar(&self) -> Option<&Scalar> {
         match self {
             Variable::Scalar(scalar) => Some(scalar),
             _ => None
@@ -82,6 +32,21 @@ impl Variable {
             Variable::StackVariable(stack_variable) => stack_variable.bits()
         }
     }
+
+    pub fn ssa(&self) -> Option<usize> {
+        match self {
+            Variable::Scalar(scalar) => scalar.ssa(),
+            Variable::StackVariable(stack_variable) => stack_variable.ssa()
+        }
+    }
+
+    pub fn set_ssa(&mut self, ssa: Option<usize>) {
+        match self {
+            Variable::Scalar(scalar) => scalar.set_ssa(ssa),
+            Variable::StackVariable(stack_variable) =>
+                stack_variable.set_ssa(ssa)
+        }
+    }
 }
 
 
@@ -94,6 +59,13 @@ impl<V: Value> Into<Expression<V>> for Variable {
 
 impl From<il::Scalar> for Variable {
     fn from(scalar: il::Scalar) -> Variable {
+        Variable::Scalar(scalar.into())
+    }
+}
+
+
+impl From<Scalar> for Variable {
+    fn from(scalar: Scalar) -> Variable {
         Variable::Scalar(scalar)
     }
 }

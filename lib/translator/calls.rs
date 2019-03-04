@@ -165,6 +165,7 @@ pub fn get_argument_variables(
                 result.push(scalar.clone().into()),
             ArgumentType::Stack(offset) => {
                 let stack_pointer = translation_information.architecture().stack_pointer();
+                let stack_pointer: ir::Scalar = stack_pointer.into();
                 let mut expr = 
                     ir::Expression::add(
                         ir::expr_const(offset as u64, stack_pointer.bits()),

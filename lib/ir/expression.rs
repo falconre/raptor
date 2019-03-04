@@ -35,7 +35,8 @@ impl Expression<Constant> {
     pub fn from_il(expression: &il::Expression) -> Expression<Constant> {
         match expression {
             il::Expression::Scalar(scalar) =>
-                Expression::LValue(Box::new(scalar.clone().into())),
+                Expression::LValue(Box::new(
+                    LValue::Variable(scalar.clone().into()))),
             il::Expression::Constant(constant) =>
                 Expression::RValue(Box::new(constant.clone().into())),
             il::Expression::Add(lhs, rhs) =>
