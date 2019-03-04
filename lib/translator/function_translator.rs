@@ -271,6 +271,8 @@ impl<'t> FunctionTranslator<'t> {
     }
 
 
+    /// This returns a new function because sometimes we add debugging
+    /// comments in the function
     pub fn strided_intervals(&self, function: &ir::Function<ir::Constant>)
         -> Result<(ir::Function<ir::Constant>,
                    HashMap<ir::ProgramLocation,
@@ -280,6 +282,7 @@ impl<'t> FunctionTranslator<'t> {
             analysis::strided_intervals::strided_intervals(function)?;
 
         let mut new_function = function.clone();
+        
         for block in new_function.blocks_mut() {
             let block_index = block.index();
             for instruction in block.instructions_mut() {
@@ -368,6 +371,14 @@ impl<'t> FunctionTranslator<'t> {
     }
 
 
+    /// The purpose of optimize_function_outer is to identify and resolve jump
+    /// tables, but this is terribly broken atm.
+    pub fn optimize_function_outer(&self, function: ir::Function<ir::Constant>)
+        -> Result<ir::Function<ir::Constant>> {
+
+        self.optimize_function_inner(function)
+    }
+    /*
     pub fn optimize_function_outer(
         &self,
         mut function: ir::Function<ir::Constant>
@@ -405,6 +416,11 @@ impl<'t> FunctionTranslator<'t> {
                                applying jump tables")?;
 
                 for entry in jump_table.entries() {
+
+                    println!("branch_address: 0x{:x}", branch_address);
+                    println!("target_address: 0x{:x}", entry.address());
+                    println!("condition: {}", entry.condition());
+
                     manual_edges.push((branch_address,
                                        entry.address(),
                                        Some(entry.condition().clone())));
@@ -412,7 +428,7 @@ impl<'t> FunctionTranslator<'t> {
             }
 
             // Lift a new function
-            let il_function: il::Function =
+            let mut il_function: il::Function =
                 self.ti()
                     .architecture()
                     .translator()
@@ -421,8 +437,15 @@ impl<'t> FunctionTranslator<'t> {
                         function2.address(),
                         manual_edges)?;
 
+            // Give it the same index as the original function
+            il_function.set_index(function2.index());
+
             function =
                 ir::Function::<ir::Constant>::from_il(&il_function)?;
+
+            // Strided intervals must be recomputed, ugh
+            let (mut function, strided_intervals) =
+                self.strided_intervals(&function)?;
 
             // Block/instruction indices may change.... so we'll rerun jump
             // table analysis, and that way we know we have valid values for
@@ -457,6 +480,7 @@ impl<'t> FunctionTranslator<'t> {
             function.set_index(function2.index());
         }
     }
+    */
 
 
     pub fn optimize_function(&self, function: ir::Function<ir::Constant>)
