@@ -1,6 +1,5 @@
 pub struct Struct {}
 
-
 pub enum Type {
     U8,
     U16,

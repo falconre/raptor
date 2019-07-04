@@ -3,21 +3,26 @@ use ir;
 use std::cmp::Ordering;
 use std::fmt;
 
-
 #[derive(Clone, Debug, Eq, Ord, Hash, PartialEq)]
 pub enum Value {
     Top(usize),
     Value(ir::Constant),
-    Bottom(usize)
+    Bottom(usize),
 }
 
 impl Value {
     pub fn is_top(&self) -> bool {
-        match self { Value::Top(_) => true, _ => false }
+        match self {
+            Value::Top(_) => true,
+            _ => false,
+        }
     }
 
     pub fn value(&self) -> Option<&ir::Constant> {
-        match self { Value::Value(c) => Some(c), _ => None }
+        match self {
+            Value::Value(c) => Some(c),
+            _ => None,
+        }
     }
 
     pub(crate) fn max_(&self, other: &Value) -> Result<Value> {
@@ -25,15 +30,16 @@ impl Value {
             Value::Top(bits) => Value::Top(*bits),
             Value::Value(lhs) => match other {
                 Value::Top(bits) => Value::Top(*bits),
-                Value::Value(rhs) => if lhs.cmpltu(rhs)?.is_one() {
-                    other.clone()
+                Value::Value(rhs) => {
+                    if lhs.cmpltu(rhs)?.is_one() {
+                        other.clone()
+                    } else {
+                        self.clone()
+                    }
                 }
-                else {
-                    self.clone()
-                },
-                Value::Bottom(_) => self.clone()
+                Value::Bottom(_) => self.clone(),
             },
-            Value::Bottom(_) => other.clone()
+            Value::Bottom(_) => other.clone(),
         })
     }
 
@@ -45,27 +51,23 @@ impl Value {
                 Value::Value(rhs) => {
                     if lhs.cmpltu(rhs)?.is_one() {
                         self.clone()
-                    }
-                    else {
+                    } else {
                         other.clone()
                     }
-                },
-                Value::Bottom(_) => self.clone()
+                }
+                Value::Bottom(_) => self.clone(),
             },
-            Value::Bottom(_) => other.clone()
+            Value::Bottom(_) => other.clone(),
         })
     }
 
     pub fn is_signed(&self) -> Result<bool> {
         Ok(match self {
             Value::Top(_) => false,
-            Value::Value(constant) =>
-                constant
-                    .shr(&ir::const_((
-                        constant.bits() - 1) as u64,
-                        constant.bits()))?
+            Value::Value(constant) => constant
+                .shr(&ir::const_((constant.bits() - 1) as u64, constant.bits()))?
                 .is_one(),
-            Value::Bottom(_) => false
+            Value::Bottom(_) => false,
         })
     }
 
@@ -74,23 +76,25 @@ impl Value {
         Ok(match self {
             Value::Top(_) => false,
             Value::Value(lhs) => match other {
-                Value::Top(_) |
-                Value::Bottom(_) => false,
+                Value::Top(_) | Value::Bottom(_) => false,
                 Value::Value(rhs) => {
-                    if lhs.bits() != rhs.bits() { return Ok(false); }
-                    if lhs.bits() == 1 { return Ok(false); }
+                    if lhs.bits() != rhs.bits() {
+                        return Ok(false);
+                    }
+                    if lhs.bits() == 1 {
+                        return Ok(false);
+                    }
                     let shift = ir::const_(lhs.bits() as u64 - 1, lhs.bits());
                     let lhs_bit = lhs.shr(&shift)?.trun(1)?.value_u64().unwrap();
                     let rhs_bit = lhs.shr(&shift)?.trun(1)?.value_u64().unwrap();
                     if lhs_bit != rhs_bit {
                         true
-                    }
-                    else {
+                    } else {
                         false
                     }
                 }
             },
-            Value::Bottom(_) => false
+            Value::Bottom(_) => false,
         })
     }
 
@@ -109,15 +113,16 @@ impl Value {
             Value::Top(bits) => Value::Top(*bits),
             Value::Value(lhs) => match other {
                 Value::Top(bits) => Value::Top(*bits),
-                Value::Value(rhs) => if lhs == rhs {
-                    self.clone()
+                Value::Value(rhs) => {
+                    if lhs == rhs {
+                        self.clone()
+                    } else {
+                        Value::Top(lhs.bits())
+                    }
                 }
-                else {
-                    Value::Top(lhs.bits())
-                },
-                Value::Bottom(_) => self.clone()
+                Value::Bottom(_) => self.clone(),
             },
-            Value::Bottom(_) => other.clone()
+            Value::Bottom(_) => other.clone(),
         }
     }
 
@@ -125,32 +130,33 @@ impl Value {
         match self {
             Value::Top(bits) => *bits,
             Value::Value(constant) => constant.bits(),
-            Value::Bottom(bits) => *bits
+            Value::Bottom(bits) => *bits,
         }
     }
 
-
-    pub fn binop<F>(&self, rhs: &Value, f: F) -> Result<Value> 
-        where F: Fn(&ir::Constant, &ir::Constant) -> Result<ir::Constant>{
-
+    pub fn binop<F>(&self, rhs: &Value, f: F) -> Result<Value>
+    where
+        F: Fn(&ir::Constant, &ir::Constant) -> Result<ir::Constant>,
+    {
         Ok(match self {
             Value::Top(bits) => Value::Top(*bits),
             Value::Value(lhs) => match rhs {
                 Value::Top(bits) => Value::Top(*bits),
                 Value::Value(rhs) => Value::Value(f(lhs, rhs)?),
-                Value::Bottom(_) => Value::Value(lhs.clone())
+                Value::Bottom(_) => Value::Value(lhs.clone()),
             },
-            Value::Bottom(_) => rhs.clone()
+            Value::Bottom(_) => rhs.clone(),
         })
     }
 
     pub fn extop<F>(&self, bits: usize, f: F) -> Result<Value>
-        where F: Fn(&ir::Constant) -> Result<ir::Constant> {
-
+    where
+        F: Fn(&ir::Constant) -> Result<ir::Constant>,
+    {
         Ok(match self {
             Value::Top(_) => Value::Top(bits),
             Value::Value(constant) => Value::Value(f(constant)?),
-            Value::Bottom(_) => Value::Bottom(bits)
+            Value::Bottom(_) => Value::Bottom(bits),
         })
     }
 }
@@ -160,21 +166,23 @@ impl PartialOrd for Value {
         match self {
             Value::Top(_) => match other {
                 Value::Top(_) => Some(Ordering::Equal),
-                Value::Value(_) |
-                Value::Bottom(_) => Some(Ordering::Greater)
+                Value::Value(_) | Value::Bottom(_) => Some(Ordering::Greater),
             },
             Value::Value(lhs) => match other {
                 Value::Top(_) => Some(Ordering::Less),
-                Value::Value(rhs) =>
-                    if lhs == rhs { Some(Ordering::Equal) }
-                    else { None },
-                Value::Bottom(_) => Some(Ordering::Greater)
+                Value::Value(rhs) => {
+                    if lhs == rhs {
+                        Some(Ordering::Equal)
+                    } else {
+                        None
+                    }
+                }
+                Value::Bottom(_) => Some(Ordering::Greater),
             },
             Value::Bottom(_) => match other {
-                Value::Top(_) |
-                Value::Value(_) => Some(Ordering::Less),
-                Value::Bottom(_) => Some(Ordering::Equal)
-            }
+                Value::Top(_) | Value::Value(_) => Some(Ordering::Less),
+                Value::Bottom(_) => Some(Ordering::Equal),
+            },
         }
     }
 }
@@ -184,7 +192,7 @@ impl fmt::Display for Value {
         match self {
             Value::Top(bits) => write!(f, "⊤:{}", bits),
             Value::Value(value) => value.fmt(f),
-            Value::Bottom(bits) => write!(f, "⊥:{}", bits)
+            Value::Bottom(bits) => write!(f, "⊥:{}", bits),
         }
     }
 }

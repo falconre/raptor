@@ -2,23 +2,30 @@ use falcon::il;
 use ir::*;
 use std::fmt;
 
-
 #[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct Instruction<V: Value> {
     index: usize,
     operation: Operation<V>,
     address: Option<u64>,
-    comment: Option<String>
+    comment: Option<String>,
 }
 
-
 impl<V: Value> Instruction<V> {
+    pub fn new(index: usize, operation: Operation<V>, address: Option<u64>) -> Instruction<V> {
+        Instruction {
+            index: index,
+            operation: operation,
+            address: address,
+            comment: None,
+        }
+    }
+
     pub fn from_il(instruction: &il::Instruction) -> Instruction<Constant> {
         Instruction {
             index: instruction.index(),
             operation: Operation::<Constant>::from_il(instruction.operation()),
             address: instruction.address(),
-            comment: None
+            comment: None,
         }
     }
 
@@ -67,28 +74,23 @@ impl<V: Value> Instruction<V> {
     }
 }
 
-
 impl<V: Value> fmt::Display for Instruction<V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let comment =
-            self.comment()
-                .map(|comment| format!(" // {}", comment))
-                .unwrap_or(String::new());
+        let comment = self
+            .comment()
+            .map(|comment| format!(" // {}", comment))
+            .unwrap_or(String::new());
 
         match self.address() {
-            Some(address) => 
-                write!(f,
-                       "{:X} {:02X} {}{}",
-                       address,
-                       self.index(),
-                       self.operation(),
-                       comment),
-            None =>
-                write!(f,
-                       "{:02X} {}{}",
-                       self.index(),
-                       self.operation(),
-                       comment)
+            Some(address) => write!(
+                f,
+                "{:X} {:02X} {}{}",
+                address,
+                self.index(),
+                self.operation(),
+                comment
+            ),
+            None => write!(f, "{:02X} {}{}", self.index(), self.operation(), comment),
         }
     }
 }

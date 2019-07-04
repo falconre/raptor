@@ -3,13 +3,6 @@
 mod functions;
 mod types;
 
+pub use self::functions::{FunctionDeclaration, Functions, ParameterType, FUNCTIONS};
 
-pub use self::functions::{
-    FUNCTIONS,
-    FunctionDeclaration,
-    Functions,
-    ParameterType
-};
-
-
-pub use self::types::{Type, Struct};
+pub use self::types::{Struct, Type};

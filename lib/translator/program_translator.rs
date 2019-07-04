@@ -8,7 +8,6 @@ use ir;
 use std::collections::HashMap;
 use translator::{FunctionTranslator, TranslationInformation};
 
-
 pub struct ProgramTranslator<'t> {
     architecture: Box<Architecture>,
     calling_convention: CallingConvention,
@@ -18,12 +17,11 @@ pub struct ProgramTranslator<'t> {
     // relocations: HashMap<u64, Symbol>
 }
 
-
 impl<'t> ProgramTranslator<'t> {
     pub fn new(
         architecture: Box<Architecture>,
         calling_convention: CallingConvention,
-        loader: &'t Loader
+        loader: &'t Loader,
     ) -> Result<ProgramTranslator<'t>> {
         let mut translator = ProgramTranslator {
             architecture: architecture,
@@ -35,17 +33,21 @@ impl<'t> ProgramTranslator<'t> {
 
         translator.init_symbols()?;
 
-        let mut starting_symbols =
-            translator.symbols
-                .iter()
-                .map(|(_, symbol)| symbol)
-                .cloned()
-                .collect::<Vec<Symbol>>();
+        let mut starting_symbols = translator
+            .symbols
+            .iter()
+            .map(|(_, symbol)| symbol)
+            .cloned()
+            .collect::<Vec<Symbol>>();
 
         starting_symbols.sort();
 
         for symbol in starting_symbols {
-            trace!("Starting symbols: 0x{:08x} = {}", symbol.address(), symbol.name());
+            trace!(
+                "Starting symbols: 0x{:08x} = {}",
+                symbol.address(),
+                symbol.name()
+            );
         }
 
         Ok(translator)
@@ -54,7 +56,7 @@ impl<'t> ProgramTranslator<'t> {
     fn plt_symbols(&self) -> Result<Vec<Symbol>> {
         let elf = match self.loader().as_any().downcast_ref::<Elf>() {
             Some(elf) => elf,
-            None => return Ok(Vec::new())
+            None => return Ok(Vec::new()),
         };
 
         let translator = elf.architecture().translator();
@@ -67,10 +69,12 @@ impl<'t> ProgramTranslator<'t> {
         for section_header in elf.section_headers {
             let name: &str = match elf.shdr_strtab.get(section_header.sh_name) {
                 Some(name) => name?,
-                None => continue
+                None => continue,
             };
 
-            if name != ".plt" { continue; }
+            if name != ".plt" {
+                continue;
+            }
 
             trace!("found plt");
 
@@ -80,12 +84,12 @@ impl<'t> ProgramTranslator<'t> {
                 let plt_address = start + (i * 4);
 
                 // Translate the block for the plt entry
-                let btr = translator.translate_block(
-                    &self.backing().get_bytes(plt_address, 16), plt_address);
+                let btr = translator
+                    .translate_block(&self.backing().get_bytes(plt_address, 16), plt_address);
 
                 let btr = match btr {
                     Ok(btr) => btr,
-                    Err(_) => continue
+                    Err(_) => continue,
                 };
 
                 let cfg = btr.blockify()?;
@@ -93,7 +97,7 @@ impl<'t> ProgramTranslator<'t> {
 
                 let instruction = match block.instructions().first() {
                     Some(instruction) => ir::Instruction::<ir::Constant>::from_il(instruction),
-                    None => continue
+                    None => continue,
                 };
 
                 match instruction.operation() {
@@ -101,11 +105,14 @@ impl<'t> ProgramTranslator<'t> {
                         if index.all_constants() {
                             let got_address = match ir::eval(index)?.value_u64() {
                                 Some(address) => address,
-                                None => continue
+                                None => continue,
                             };
 
-                            trace!("Looking for symbol plt_address=0x{:x}, got_address=0x{:x}",
-                                   plt_address, got_address);
+                            trace!(
+                                "Looking for symbol plt_address=0x{:x}, got_address=0x{:x}",
+                                plt_address,
+                                got_address
+                            );
 
                             if let Some(symbol) = self.symbol(got_address).cloned() {
                                 plt_symbols.push(Symbol::new(symbol.name(), plt_address));
@@ -136,7 +143,7 @@ impl<'t> ProgramTranslator<'t> {
             self.architecture.as_ref(),
             self.calling_convention(),
             self.backing(),
-            &self.symbols
+            &self.symbols,
         )
     }
 

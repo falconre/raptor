@@ -1,20 +1,24 @@
 extern crate falcon;
-#[macro_use] extern crate error_chain;
+#[macro_use]
+extern crate error_chain;
 extern crate falcon_z3;
 extern crate goblin;
-#[macro_use] extern crate lazy_static;
-#[macro_use] extern crate log;
+#[macro_use]
+extern crate lazy_static;
+#[macro_use]
+extern crate log;
 extern crate serde;
-#[macro_use] extern crate serde_derive;
+#[macro_use]
+extern crate serde_derive;
 
 pub mod analysis;
 pub mod features;
 pub mod ir;
+pub mod modules;
 pub mod solver;
 pub mod translator;
 
 pub mod data;
-
 
 pub mod error {
     error_chain! {
@@ -59,7 +63,6 @@ pub mod error {
         }
     }
 }
-
 
 pub fn falcon_result<T>(raptor_result: error::Result<T>) -> falcon::error::Result<T> {
     raptor_result.map_err(|e| format!("Raptor Error: {}", e.description()).into())

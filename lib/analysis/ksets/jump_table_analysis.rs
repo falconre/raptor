@@ -6,27 +6,21 @@ use error::*;
 use falcon::il;
 use falcon::memory::backing;
 use ir;
+use std::cmp::{Ordering, PartialOrd};
 use std::collections::{BTreeSet, HashMap};
-use std::cmp::{PartialOrd, Ordering};
-
 
 pub fn jump_table_analysis(
     function: &ir::Function<ir::Constant>,
     strided_intervals: &HashMap<ir::ProgramLocation, strided_intervals::State>,
-    backing: &backing::Memory
+    backing: &backing::Memory,
 ) -> Result<Vec<JumpTable>> {
-
-    let jump_table_analysis =
-        JumpTableAnalysis::new(strided_intervals, backing);
+    let jump_table_analysis = JumpTableAnalysis::new(strided_intervals, backing);
 
     let states: HashMap<ir::ProgramLocation, State> =
         fixed_point::fixed_point_forward(&jump_table_analysis, function)?;
 
     let states =
-        fixed_point::incoming_results(&jump_table_analysis,
-                                      function,
-                                      states,
-                                      || State::new())?;
+        fixed_point::incoming_results(&jump_table_analysis, function, states, || State::new())?;
 
     let mut jump_tables = Vec::new();
 
@@ -34,44 +28,41 @@ pub fn jump_table_analysis(
         let rpl = location.apply(function)?;
 
         if let Some(instruction) = rpl.instruction() {
-            if !instruction.operation().is_branch() { continue; }
-            let target =
-                instruction
-                    .operation()
-                    .target()
-                    .ok_or("Failed to get branch target")?;
+            if !instruction.operation().is_branch() {
+                continue;
+            }
+            let target = instruction
+                .operation()
+                .target()
+                .ok_or("Failed to get branch target")?;
 
             // This only works if the target is a scalar
             let target_scalar = match target.scalar() {
                 Some(scalar) => scalar,
-                None => continue
+                None => continue,
             };
 
             let kset = state.eval(&target.into())?;
 
             if kset.value().value().is_some() {
                 let mut jump_table_entries = Vec::new();
-                for address in kset.value()
-                                   .value()
-                                   .ok_or("Failed to get kset value")? {
-                    let condition =
-                        il::Expression::cmpeq(
-                            il::scalar(target_scalar.name(),
-                                       target_scalar.bits()).into(),
-                            address.clone().into())?;
-                    let jump_table_entry =
-                        JumpTableEntry::new(
-                            address
-                                .value_u64()
-                                .ok_or("Failed to get jump table value")?,
-                            condition);
+                for address in kset.value().value().ok_or("Failed to get kset value")? {
+                    let condition = il::Expression::cmpeq(
+                        il::scalar(target_scalar.name(), target_scalar.bits()).into(),
+                        address.clone().into(),
+                    )?;
+                    let jump_table_entry = JumpTableEntry::new(
+                        address
+                            .value_u64()
+                            .ok_or("Failed to get jump table value")?,
+                        condition,
+                    );
                     jump_table_entries.push(jump_table_entry);
                 }
 
                 jump_table_entries.sort();
 
-                let jump_table =
-                    JumpTable::new(location.clone(), jump_table_entries);
+                let jump_table = JumpTable::new(location.clone(), jump_table_entries);
                 jump_tables.push(jump_table);
             }
         }
@@ -80,65 +71,68 @@ pub fn jump_table_analysis(
     Ok(jump_tables)
 }
 
-
 #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub struct JumpTable {
     location: ir::ProgramLocation,
-    entries: Vec<JumpTableEntry>
+    entries: Vec<JumpTableEntry>,
 }
 
 impl JumpTable {
-    pub fn new(location: ir::ProgramLocation, entries: Vec<JumpTableEntry>)
-        -> JumpTable {
-
+    pub fn new(location: ir::ProgramLocation, entries: Vec<JumpTableEntry>) -> JumpTable {
         JumpTable {
             location: location,
-            entries: entries
+            entries: entries,
         }
     }
 
     /// Get the program location of the branch for the jump table
-    pub fn location(&self) -> &ir::ProgramLocation { &self.location }
+    pub fn location(&self) -> &ir::ProgramLocation {
+        &self.location
+    }
     /// Get the jump table entries
-    pub fn entries(&self) -> &[JumpTableEntry] { &self.entries }
+    pub fn entries(&self) -> &[JumpTableEntry] {
+        &self.entries
+    }
 }
-
 
 #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub struct JumpTableEntry {
     address: u64,
-    condition: il::Expression
+    condition: il::Expression,
 }
 
 impl JumpTableEntry {
     pub fn new(address: u64, condition: il::Expression) -> JumpTableEntry {
         JumpTableEntry {
             address: address,
-            condition: condition
+            condition: condition,
         }
     }
 
     /// Get the target address for the jump table
-    pub fn address(&self) -> u64 { self.address }
+    pub fn address(&self) -> u64 {
+        self.address
+    }
     /// Get the condition which guards this entry in the jump table
-    pub fn condition(&self) -> &il::Expression { &self.condition }
+    pub fn condition(&self) -> &il::Expression {
+        &self.condition
+    }
 }
-
 
 #[derive(Debug)]
 struct JumpTableAnalysis<'j> {
     strided_intervals: &'j HashMap<ir::ProgramLocation, strided_intervals::State>,
-    backing: &'j backing::Memory
+    backing: &'j backing::Memory,
 }
 
 impl<'j> JumpTableAnalysis<'j> {
     fn new(
         strided_intervals: &'j HashMap<ir::ProgramLocation, strided_intervals::State>,
-        backing: &'j backing::Memory
+        backing: &'j backing::Memory,
     ) -> JumpTableAnalysis<'j> {
         JumpTableAnalysis {
             strided_intervals: strided_intervals,
-            backing: backing
+            backing: backing,
         }
     }
 
@@ -154,18 +148,20 @@ impl<'j> JumpTableAnalysis<'j> {
 
         if let Some(addresses) = kset.value().value() {
             for address in addresses {
-                let value =
-                    self.backing()
-                        .get(address.value_u64()
-                                    .ok_or("Failed to get address for load_kset")?,
-                             bits);
+                let value = self.backing().get(
+                    address
+                        .value_u64()
+                        .ok_or("Failed to get address for load_kset")?,
+                    bits,
+                );
                 match value {
-                    Some(value) => { hashset.insert(value); },
-                    None => return Ok(KSet::new_top(bits))
+                    Some(value) => {
+                        hashset.insert(value);
+                    }
+                    None => return Ok(KSet::new_top(bits)),
                 }
             }
-        }
-        else {
+        } else {
             return Ok(KSet::new_top(bits));
         }
 
@@ -175,7 +171,7 @@ impl<'j> JumpTableAnalysis<'j> {
     fn eval(
         &self,
         program_location: &ir::ProgramLocation,
-        expression: &ir::Expression<StridedInterval>
+        expression: &ir::Expression<StridedInterval>,
     ) -> Result<StridedInterval> {
         self.strided_intervals
             .get(program_location)
@@ -183,7 +179,6 @@ impl<'j> JumpTableAnalysis<'j> {
             .eval(expression)
     }
 }
-
 
 #[derive(Clone, Debug, PartialEq)]
 struct State {
@@ -193,19 +188,21 @@ struct State {
 impl State {
     fn new() -> State {
         State {
-            variables: HashMap::new()
+            variables: HashMap::new(),
         }
     }
 
-    fn variables(&self) -> &HashMap<ir::Variable, KSet> { &self.variables }
+    fn variables(&self) -> &HashMap<ir::Variable, KSet> {
+        &self.variables
+    }
 
     fn join(mut self, other: &State) -> Result<State> {
         for (variable, kset) in other.variables() {
-            let kset: KSet =
-                self.variables
-                    .get(variable)
-                    .map(|k| k.join(kset))
-                    .unwrap_or(kset.clone());
+            let kset: KSet = self
+                .variables
+                .get(variable)
+                .map(|k| k.join(kset))
+                .unwrap_or(kset.clone());
             self.variables.insert(variable.clone(), kset);
         }
         Ok(self)
@@ -228,59 +225,38 @@ impl State {
     fn eval(&self, expression: &ir::Expression<KSet>) -> Result<KSet> {
         Ok(match expression {
             ir::Expression::LValue(lvalue) => match lvalue.as_ref() {
-                ir::LValue::Variable(variable) => {
-                    self.get(variable)
-                        .map(|v| v.clone())
-                        .unwrap_or(KSet::new_top(variable.bits()))
-                }
-                ir::LValue::Dereference(dereference) =>
-                    KSet::new_top(dereference.bits())
+                ir::LValue::Variable(variable) => self
+                    .get(variable)
+                    .map(|v| v.clone())
+                    .unwrap_or(KSet::new_top(variable.bits())),
+                ir::LValue::Dereference(dereference) => KSet::new_top(dereference.bits()),
             },
             ir::Expression::RValue(rvalue) => match rvalue.as_ref() {
                 ir::RValue::Value(value) => value.clone(),
-                ir::RValue::Reference(reference) =>
-                    KSet::new_top(reference.bits())
+                ir::RValue::Reference(reference) => KSet::new_top(reference.bits()),
             },
-            ir::Expression::Add(lhs, rhs) =>
-                self.eval(lhs)?.add(&self.eval(rhs)?)?,
-            ir::Expression::Sub(lhs, rhs) =>
-                self.eval(lhs)?.sub(&self.eval(rhs)?)?,
-            ir::Expression::Mul(lhs, rhs) =>
-                self.eval(lhs)?.mul(&self.eval(rhs)?)?,
-            ir::Expression::Divu(lhs, rhs) =>
-                self.eval(lhs)?.divu(&self.eval(rhs)?)?,
-            ir::Expression::Modu(lhs, rhs) =>
-                self.eval(lhs)?.modu(&self.eval(rhs)?)?,
-            ir::Expression::Divs(lhs, rhs) =>
-                self.eval(lhs)?.divs(&self.eval(rhs)?)?,
-            ir::Expression::Mods(lhs, rhs) =>
-                self.eval(lhs)?.mods(&self.eval(rhs)?)?,
-            ir::Expression::And(lhs, rhs) =>
-                self.eval(lhs)?.and(&self.eval(rhs)?)?,
-            ir::Expression::Or(lhs, rhs) =>
-                self.eval(lhs)?.or(&self.eval(rhs)?)?,
-            ir::Expression::Xor(lhs, rhs) =>
-                self.eval(lhs)?.xor(&self.eval(rhs)?)?,
-            ir::Expression::Shl(lhs, rhs) =>
-                self.eval(lhs)?.shl(&self.eval(rhs)?)?,
-            ir::Expression::Shr(lhs, rhs) =>
-                self.eval(lhs)?.shr(&self.eval(rhs)?)?,
-            ir::Expression::Cmpeq(lhs, rhs) =>
-                self.eval(lhs)?.cmpeq(&self.eval(rhs)?)?,
-            ir::Expression::Cmpneq(lhs, rhs) =>
-                self.eval(lhs)?.cmpneq(&self.eval(rhs)?)?,
-            ir::Expression::Cmplts(lhs, rhs) =>
-                self.eval(lhs)?.cmplts(&self.eval(rhs)?)?,
-            ir::Expression::Cmpltu(lhs, rhs) =>
-                self.eval(lhs)?.cmpltu(&self.eval(rhs)?)?,
-            ir::Expression::Zext(bits, rhs) =>
-                self.eval(rhs)?.zext(*bits)?,
+            ir::Expression::Add(lhs, rhs) => self.eval(lhs)?.add(&self.eval(rhs)?)?,
+            ir::Expression::Sub(lhs, rhs) => self.eval(lhs)?.sub(&self.eval(rhs)?)?,
+            ir::Expression::Mul(lhs, rhs) => self.eval(lhs)?.mul(&self.eval(rhs)?)?,
+            ir::Expression::Divu(lhs, rhs) => self.eval(lhs)?.divu(&self.eval(rhs)?)?,
+            ir::Expression::Modu(lhs, rhs) => self.eval(lhs)?.modu(&self.eval(rhs)?)?,
+            ir::Expression::Divs(lhs, rhs) => self.eval(lhs)?.divs(&self.eval(rhs)?)?,
+            ir::Expression::Mods(lhs, rhs) => self.eval(lhs)?.mods(&self.eval(rhs)?)?,
+            ir::Expression::And(lhs, rhs) => self.eval(lhs)?.and(&self.eval(rhs)?)?,
+            ir::Expression::Or(lhs, rhs) => self.eval(lhs)?.or(&self.eval(rhs)?)?,
+            ir::Expression::Xor(lhs, rhs) => self.eval(lhs)?.xor(&self.eval(rhs)?)?,
+            ir::Expression::Shl(lhs, rhs) => self.eval(lhs)?.shl(&self.eval(rhs)?)?,
+            ir::Expression::Shr(lhs, rhs) => self.eval(lhs)?.shr(&self.eval(rhs)?)?,
+            ir::Expression::Cmpeq(lhs, rhs) => self.eval(lhs)?.cmpeq(&self.eval(rhs)?)?,
+            ir::Expression::Cmpneq(lhs, rhs) => self.eval(lhs)?.cmpneq(&self.eval(rhs)?)?,
+            ir::Expression::Cmplts(lhs, rhs) => self.eval(lhs)?.cmplts(&self.eval(rhs)?)?,
+            ir::Expression::Cmpltu(lhs, rhs) => self.eval(lhs)?.cmpltu(&self.eval(rhs)?)?,
+            ir::Expression::Zext(bits, rhs) => self.eval(rhs)?.zext(*bits)?,
             ir::Expression::Sext(bits, rhs) => self.eval(rhs)?.sext(*bits)?,
             ir::Expression::Trun(bits, rhs) => self.eval(rhs)?.trun(*bits)?,
-            ir::Expression::Ite(cond, then, else_) =>
-                KSet::ite(&self.eval(cond)?,
-                          &self.eval(then)?,
-                          &self.eval(else_)?)?
+            ir::Expression::Ite(cond, then, else_) => {
+                KSet::ite(&self.eval(cond)?, &self.eval(then)?, &self.eval(else_)?)?
+            }
         })
     }
 }
@@ -294,24 +270,36 @@ impl PartialOrd for State {
                 Some(rkset) => {
                     let cmp = kset.partial_cmp(rkset)?;
                     if cmp == Ordering::Less {
-                        if order == Ordering::Greater { return None; }
-                        else { order = Ordering::Less; }
+                        if order == Ordering::Greater {
+                            return None;
+                        } else {
+                            order = Ordering::Less;
+                        }
+                    } else if cmp == Ordering::Greater {
+                        if order == Ordering::Less {
+                            return None;
+                        } else {
+                            order = Ordering::Greater;
+                        }
                     }
-                    else if cmp == Ordering::Greater {
-                        if order == Ordering::Less { return None; }
-                        else { order = Ordering::Greater; }
+                }
+                None => {
+                    if order == Ordering::Greater {
+                        return None;
+                    } else {
+                        order = Ordering::Greater;
                     }
-                },
-                None =>
-                    if order == Ordering::Greater { return None; }
-                    else { order = Ordering::Greater; }
+                }
             }
         }
 
         for (variable, _) in other.variables() {
             if self.variables().get(&variable).is_none() {
-                if order == Ordering::Greater { return None; }
-                else { order = Ordering::Less; }
+                if order == Ordering::Greater {
+                    return None;
+                } else {
+                    order = Ordering::Less;
+                }
             }
         }
 
@@ -319,16 +307,12 @@ impl PartialOrd for State {
     }
 }
 
-
-
 impl<'f, 'j> fixed_point::FixedPointAnalysis<'f, State, ir::Constant> for JumpTableAnalysis<'j> {
-
     fn trans(
         &self,
         location: &ir::RefProgramLocation<ir::Constant>,
-        state: Option<State>
+        state: Option<State>,
     ) -> Result<State> {
-
         let mut state = state.unwrap_or(State::new());
 
         match location.function_location() {
@@ -339,13 +323,13 @@ impl<'f, 'j> fixed_point::FixedPointAnalysis<'f, State, ir::Constant> for JumpTa
 
                         assert!(dst.bits() == src.bits());
                         state.set(dst.clone(), src);
-                    },
-                    ir::Operation::Branch { .. } |
-                    ir::Operation::Call { .. } |
-                    ir::Operation::Intrinsic(_) |
-                    ir::Operation::Return(_) => {
+                    }
+                    ir::Operation::Branch { .. }
+                    | ir::Operation::Call { .. }
+                    | ir::Operation::Intrinsic(_)
+                    | ir::Operation::Return(_) => {
                         state.top();
-                    },
+                    }
                     ir::Operation::Load { dst, index } => {
                         // Get the strided interval for this index, if one
                         // exists
@@ -354,13 +338,11 @@ impl<'f, 'j> fixed_point::FixedPointAnalysis<'f, State, ir::Constant> for JumpTa
                         let index = KSet::from_strided_interval(&index);
 
                         state.set(dst.clone(), self.load_kset(&index, dst.bits())?);
-                    },
-                    ir::Operation::Store { .. } |
-                    ir::Operation::Nop => {},
+                    }
+                    ir::Operation::Store { .. } | ir::Operation::Nop => {}
                 }
-            },
-            ir::RefFunctionLocation::Edge(_) |
-            ir::RefFunctionLocation::EmptyBlock(_) => {}
+            }
+            ir::RefFunctionLocation::Edge(_) | ir::RefFunctionLocation::EmptyBlock(_) => {}
         }
 
         Ok(state)

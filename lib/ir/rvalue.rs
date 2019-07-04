@@ -1,26 +1,24 @@
 use ir::*;
 use std::fmt;
 
-
 #[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum RValue<V: Value> {
     Value(V),
-    Reference(Reference<V>)
+    Reference(Reference<V>),
 }
-
 
 impl<V: Value> RValue<V> {
     pub fn value(&self) -> Option<&V> {
         match self {
             RValue::Value(value) => Some(value),
-            _ => None
+            _ => None,
         }
     }
 
     pub fn reference(&self) -> Option<&Reference<V>> {
         match self {
             RValue::Reference(reference) => Some(reference),
-            _ => None
+            _ => None,
         }
     }
 
@@ -34,11 +32,10 @@ impl<V: Value> RValue<V> {
     pub fn bits(&self) -> usize {
         match self {
             RValue::Value(value) => value.bits(),
-            RValue::Reference(reference) => reference.bits()
+            RValue::Reference(reference) => reference.bits(),
         }
     }
 }
-
 
 impl<V: Value> Into<Expression<V>> for RValue<V> {
     fn into(self) -> Expression<V> {
@@ -46,19 +43,17 @@ impl<V: Value> Into<Expression<V>> for RValue<V> {
     }
 }
 
-
 impl From<Constant> for RValue<Constant> {
     fn from(constant: Constant) -> RValue<Constant> {
         RValue::Value(constant)
     }
 }
 
-
 impl<V: Value> fmt::Display for RValue<V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             RValue::Value(value) => fmt::Display::fmt(&value, f),
-            RValue::Reference(reference) => reference.fmt(f)
+            RValue::Reference(reference) => reference.fmt(f),
         }
     }
 }

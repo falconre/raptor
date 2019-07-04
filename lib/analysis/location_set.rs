@@ -1,19 +1,17 @@
 use error::*;
-use std::collections::HashSet;
 use ir;
 use std::cmp::{Ordering, PartialOrd};
-
+use std::collections::HashSet;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct LocationSet {
-    locations: HashSet<ir::ProgramLocation>
+    locations: HashSet<ir::ProgramLocation>,
 }
-
 
 impl LocationSet {
     pub fn new() -> LocationSet {
         LocationSet {
-            locations: HashSet::default()
+            locations: HashSet::default(),
         }
     }
 
@@ -37,9 +35,10 @@ impl LocationSet {
         self.locations.is_empty()
     }
 
-    pub fn apply<'f, V: 'f + ir::Value>(&self, function: &'f ir::Function<V>)
-        -> Result<RefLocationSet<'f, V>> {
-
+    pub fn apply<'f, V: 'f + ir::Value>(
+        &self,
+        function: &'f ir::Function<V>,
+    ) -> Result<RefLocationSet<'f, V>> {
         let mut rls = RefLocationSet::new();
         for location in self.locations() {
             rls.insert(location.apply(function)?);
@@ -48,35 +47,34 @@ impl LocationSet {
     }
 
     pub fn join(mut self, other: &LocationSet) -> LocationSet {
-        other.locations
+        other
+            .locations
             .iter()
             .for_each(|location| self.insert(location.clone()));
         self
     }
 }
 
-
 impl PartialOrd for LocationSet {
     fn partial_cmp(&self, rhs: &LocationSet) -> Option<Ordering> {
-        let mut order =
-            self.locations.iter()
-                .fold(Ordering::Equal, |order, location|
-                    if order == Ordering::Greater {
-                        Ordering::Greater
-                    }
-                    else if !rhs.contains(location) {
-                        Ordering::Greater
-                    }
-                    else {
-                        Ordering::Equal
-                    });
+        let mut order = self
+            .locations
+            .iter()
+            .fold(Ordering::Equal, |order, location| {
+                if order == Ordering::Greater {
+                    Ordering::Greater
+                } else if !rhs.contains(location) {
+                    Ordering::Greater
+                } else {
+                    Ordering::Equal
+                }
+            });
 
         for location in rhs.locations() {
             if !self.contains(location) {
                 if order == Ordering::Greater {
                     return None;
-                }
-                else {
+                } else {
                     order = Ordering::Less;
                 }
             }
@@ -85,17 +83,15 @@ impl PartialOrd for LocationSet {
     }
 }
 
-
 #[derive(Clone, Debug, PartialEq)]
 pub struct RefLocationSet<'f, V: 'f + ir::Value> {
-    locations: HashSet<ir::RefProgramLocation<'f, V>>
+    locations: HashSet<ir::RefProgramLocation<'f, V>>,
 }
-
 
 impl<'f, V: ir::Value> RefLocationSet<'f, V> {
     pub fn new() -> RefLocationSet<'f, V> {
         RefLocationSet {
-            locations: HashSet::default()
+            locations: HashSet::default(),
         }
     }
 
@@ -120,28 +116,26 @@ impl<'f, V: ir::Value> RefLocationSet<'f, V> {
     }
 }
 
-
 impl<'f, V: ir::Value> PartialOrd for RefLocationSet<'f, V> {
     fn partial_cmp(&self, rhs: &RefLocationSet<'f, V>) -> Option<Ordering> {
-        let mut order =
-            self.locations.iter()
-                .fold(Ordering::Equal, |order, location|
-                    if order == Ordering::Greater {
-                        Ordering::Greater
-                    }
-                    else if !rhs.contains(location) {
-                        Ordering::Greater
-                    }
-                    else {
-                        Ordering::Equal
-                    });
+        let mut order = self
+            .locations
+            .iter()
+            .fold(Ordering::Equal, |order, location| {
+                if order == Ordering::Greater {
+                    Ordering::Greater
+                } else if !rhs.contains(location) {
+                    Ordering::Greater
+                } else {
+                    Ordering::Equal
+                }
+            });
 
         for location in rhs.locations() {
             if !self.contains(location) {
                 if order == Ordering::Greater {
                     return None;
-                }
-                else {
+                } else {
                     order = Ordering::Less;
                 }
             }

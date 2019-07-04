@@ -1,5 +1,5 @@
 //! An incomplete Strided Intervals implementation.
-use analysis::{LocationSet, fixed_point, use_def};
+use analysis::{fixed_point, use_def, LocationSet};
 use error::*;
 use ir;
 use solver;
@@ -14,34 +14,30 @@ pub use self::interval::Interval;
 pub use self::strided_interval::StridedInterval;
 pub use self::value::Value;
 
-
-pub fn strided_intervals<'f>(function: &'f ir::Function<ir::Constant>) ->
-    Result<HashMap<ir::ProgramLocation, State>> {
-
+pub fn strided_intervals<'f>(
+    function: &'f ir::Function<ir::Constant>,
+) -> Result<HashMap<ir::ProgramLocation, State>> {
     let strided_interval_analysis = StridedIntervalAnalysis::new(function)?;
 
-    let strided_intervals =
-        fixed_point::fixed_point_forward(&strided_interval_analysis, function)?;
+    let strided_intervals = fixed_point::fixed_point_forward(&strided_interval_analysis, function)?;
 
     fixed_point::incoming_results(
         &strided_interval_analysis,
         function,
         strided_intervals,
-        || State::new()
+        || State::new(),
     )
 }
 
-
-
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct State {
-    variables: HashMap<ir::Variable, StridedInterval>
+    variables: HashMap<ir::Variable, StridedInterval>,
 }
 
 impl State {
     pub fn new() -> State {
         State {
-            variables: HashMap::new()
+            variables: HashMap::new(),
         }
     }
 
@@ -53,28 +49,22 @@ impl State {
         &self.variables
     }
 
-    pub fn set(
-        &mut self,
-        variable: ir::Variable,
-        strided_interval: StridedInterval
-    ) {
+    pub fn set(&mut self, variable: ir::Variable, strided_interval: StridedInterval) {
         self.variables.insert(variable, strided_interval);
     }
 
-    pub fn eval(&self, e: &ir::Expression<StridedInterval>)
-        -> Result<StridedInterval> {
-
+    pub fn eval(&self, e: &ir::Expression<StridedInterval>) -> Result<StridedInterval> {
         Ok(match e {
             ir::Expression::LValue(lvalue) => match lvalue.as_ref() {
-                ir::LValue::Variable(variable) =>
-                    self.variable(variable)
-                        .map(|si| si.clone())
-                        .unwrap_or(StridedInterval::new_top(e.bits())),
-                ir::LValue::Dereference(_) => StridedInterval::new_top(e.bits())
+                ir::LValue::Variable(variable) => self
+                    .variable(variable)
+                    .map(|si| si.clone())
+                    .unwrap_or(StridedInterval::new_top(e.bits())),
+                ir::LValue::Dereference(_) => StridedInterval::new_top(e.bits()),
             },
             ir::Expression::RValue(rvalue) => match rvalue.as_ref() {
                 ir::RValue::Value(strided_interval) => strided_interval.clone(),
-                ir::RValue::Reference(_) => StridedInterval::new_top(e.bits())
+                ir::RValue::Reference(_) => StridedInterval::new_top(e.bits()),
             },
             ir::Expression::Add(lhs, rhs) => self.eval(&lhs)?.add(&self.eval(rhs)?)?,
             ir::Expression::Sub(lhs, rhs) => self.eval(&lhs)?.sub(&self.eval(rhs)?)?,
@@ -103,7 +93,7 @@ impl State {
         for (variable, si) in other.variables() {
             let si = match self.variables.get(variable) {
                 Some(si2) => si.join(si2)?,
-                None => si.clone()
+                None => si.clone(),
             };
             self.variables.insert(variable.clone(), si);
         }
@@ -111,13 +101,11 @@ impl State {
     }
 
     pub fn top(&mut self) {
-        self.variables.iter_mut()
-            .for_each(|(_, si)| {
-                *si = StridedInterval::new_top(si.bits())
-            });
+        self.variables
+            .iter_mut()
+            .for_each(|(_, si)| *si = StridedInterval::new_top(si.bits()));
     }
 }
-
 
 impl PartialOrd for State {
     fn partial_cmp(&self, other: &State) -> Option<Ordering> {
@@ -125,25 +113,36 @@ impl PartialOrd for State {
 
         for (variable, lhs) in self.variables() {
             if other.variables().get(variable).is_none() {
-                if order == Ordering::Less { return None; }
-                else { order = Ordering::Greater; }
+                if order == Ordering::Less {
+                    return None;
+                } else {
+                    order = Ordering::Greater;
+                }
                 continue;
             }
             let rhs = &other.variables()[variable];
             if lhs > rhs {
-                if order == Ordering::Less { return None; }
-                else { order = Ordering::Greater; }
-            }
-            else if lhs < rhs {
-                if order == Ordering::Greater { return None; }
-                else { order = Ordering::Less; }
+                if order == Ordering::Less {
+                    return None;
+                } else {
+                    order = Ordering::Greater;
+                }
+            } else if lhs < rhs {
+                if order == Ordering::Greater {
+                    return None;
+                } else {
+                    order = Ordering::Less;
+                }
             }
         }
 
         for (variable, _rhs) in other.variables() {
             if self.variables.get(variable).is_none() {
-                if order == Ordering::Greater { return None; }
-                else { order = Ordering::Less; }
+                if order == Ordering::Greater {
+                    return None;
+                } else {
+                    order = Ordering::Less;
+                }
             }
         }
 
@@ -151,29 +150,27 @@ impl PartialOrd for State {
     }
 }
 
-
 struct StridedIntervalAnalysis {
     visited: RefCell<HashSet<ir::ProgramLocation>>,
     use_def: HashMap<ir::ProgramLocation, LocationSet>,
-    used_variables: HashMap<ir::ProgramLocation, HashSet<ir::Variable>>
+    used_variables: HashMap<ir::ProgramLocation, HashSet<ir::Variable>>,
 }
 
 impl StridedIntervalAnalysis {
     fn new(function: &ir::Function<ir::Constant>) -> Result<StridedIntervalAnalysis> {
-        let mut used_variables: HashMap<ir::ProgramLocation, HashSet<ir::Variable>>
-            = HashMap::new();
+        let mut used_variables: HashMap<ir::ProgramLocation, HashSet<ir::Variable>> =
+            HashMap::new();
 
         let use_def = use_def(function)?;
 
         for (pl, location_set) in use_def.iter() {
             for location in location_set.locations() {
                 let rpl = location.apply(function)?;
-                let hash_set = used_variables.entry(pl.clone())
-                    .or_insert(HashSet::new());
+                let hash_set = used_variables.entry(pl.clone()).or_insert(HashSet::new());
 
-                let variables_read =
-                    rpl.instruction()
-                       .and_then(|instruction| instruction.variables_read());
+                let variables_read = rpl
+                    .instruction()
+                    .and_then(|instruction| instruction.variables_read());
                 if let Some(variables_read) = variables_read {
                     for variable in variables_read {
                         hash_set.insert(variable.clone());
@@ -185,7 +182,7 @@ impl StridedIntervalAnalysis {
         Ok(StridedIntervalAnalysis {
             visited: RefCell::new(HashSet::new()),
             use_def: use_def,
-            used_variables: used_variables
+            used_variables: used_variables,
         })
     }
 
@@ -197,98 +194,90 @@ impl StridedIntervalAnalysis {
         self.visited.borrow_mut().insert(location);
     }
 
-    fn use_def(&self, program_location: &ir::ProgramLocation)
-        -> &LocationSet {
+    fn use_def(&self, program_location: &ir::ProgramLocation) -> &LocationSet {
         &self.use_def[program_location]
     }
 
-    fn used_variables(&self, program_location: &ir::ProgramLocation)
-        -> Option<&HashSet<ir::Variable>> {
+    fn used_variables(
+        &self,
+        program_location: &ir::ProgramLocation,
+    ) -> Option<&HashSet<ir::Variable>> {
         self.used_variables.get(program_location)
     }
 }
 
-
-impl<'r> fixed_point::FixedPointAnalysis<'r, State, ir::Constant>
-    for StridedIntervalAnalysis {
-
+impl<'r> fixed_point::FixedPointAnalysis<'r, State, ir::Constant> for StridedIntervalAnalysis {
     fn trans(
         &self,
         location: &ir::RefProgramLocation<'r, ir::Constant>,
-        state: Option<State>
+        state: Option<State>,
     ) -> Result<State> {
         let mut state = match state {
             Some(state) => state,
-            None => State::new()
+            None => State::new(),
         };
 
         let program_location: ir::ProgramLocation = location.clone().into();
 
         let state = match location.function_location() {
-            ir::RefFunctionLocation::Instruction(_, instruction) => {
-                match instruction.operation() {
-                    ir::Operation::Assign { dst, src } => {
-                        let src = state.eval(&src.into())?;
-                        if instruction.address().map(|a| a == 0x402680).unwrap_or(false) {
-                            println!("{} {} = {}", instruction, dst, src);
+            ir::RefFunctionLocation::Instruction(_, instruction) => match instruction.operation() {
+                ir::Operation::Assign { dst, src } => {
+                    let src = state.eval(&src.into())?;
+                    if instruction
+                        .address()
+                        .map(|a| a == 0x402680)
+                        .unwrap_or(false)
+                    {
+                        println!("{} {} = {}", instruction, dst, src);
+                    }
+                    let src2 = if self.is_visited(&program_location) {
+                        if let Some(original_src) = state.variable(dst) {
+                            original_src.widen(&src)?
+                        } else {
+                            src
                         }
-                        let src2 =
-                            if self.is_visited(&program_location) {
-                                if let Some(original_src) = state.variable(dst) {
-                                    original_src.widen(&src)?
-                                }
-                                else {
-                                    src
-                                }
-                            }
-                            else {
-                                src
-                            };
-                        state.set(dst.clone(), src2);
-                        state
-                    },
-                    ir::Operation::Load { dst, .. } => {
-                        state.set(dst.clone(),
-                                  StridedInterval::new_top(dst.bits()));
-                        state
-                    },
-                    ir::Operation::Branch { .. } => {
+                    } else {
+                        src
+                    };
+                    state.set(dst.clone(), src2);
+                    state
+                }
+                ir::Operation::Load { dst, .. } => {
+                    state.set(dst.clone(), StridedInterval::new_top(dst.bits()));
+                    state
+                }
+                ir::Operation::Branch { .. } => {
+                    state.top();
+                    state
+                }
+                ir::Operation::Call(call) => {
+                    if let Some(variables) = call.variables_written() {
+                        variables.into_iter().for_each(|variable| {
+                            state.set(variable.clone(), StridedInterval::new_top(variable.bits()));
+                        });
+                    } else {
                         state.top();
-                        state
-                    },
-                    ir::Operation::Call(call) => {
-                        if let Some(variables) = call.variables_written() {
-                            variables.into_iter()
-                                .for_each(|variable| {
-                                    state.set(
-                                        variable.clone(),
-                                        StridedInterval::new_top(variable.bits())
-                                    );
-                                });
-                        }
-                        else {
-                            state.top();
-                        }
-                        state
-                    },
-                    ir::Operation::Intrinsic(intrinsic) => {
-                        if let Some(scalars_written) = intrinsic.scalars_written() {
-                            scalars_written.into_iter()
-                                .map(|s| s.clone().into())
-                                .for_each(|variable: ir::Variable| {
-                                    state.set(
-                                        variable.clone(),
-                                        StridedInterval::new_top(variable.bits()))
-                                });
-                        }
-                        else {
-                            state.top();
-                        }
-                        state
-                    },
-                    ir::Operation::Return(_) |
-                    ir::Operation::Store { .. } |
-                    ir::Operation::Nop => state
+                    }
+                    state
+                }
+                ir::Operation::Intrinsic(intrinsic) => {
+                    if let Some(scalars_written) = intrinsic.scalars_written() {
+                        scalars_written
+                            .into_iter()
+                            .map(|s| s.clone().into())
+                            .for_each(|variable: ir::Variable| {
+                                state.set(
+                                    variable.clone(),
+                                    StridedInterval::new_top(variable.bits()),
+                                )
+                            });
+                    } else {
+                        state.top();
+                    }
+                    state
+                }
+                ir::Operation::Return(_) | ir::Operation::Store { .. } | ir::Operation::Nop => {
+                    state
                 }
             },
             ir::RefFunctionLocation::Edge(edge) => {
@@ -307,9 +296,8 @@ impl<'r> fixed_point::FixedPointAnalysis<'r, State, ir::Constant>
                             }
                             let dst = operation.dst().unwrap();
                             let src = operation.src().unwrap();
-                            let constraint = ir::Expression::cmpeq(
-                                dst.clone().into(),
-                                src.clone())?;
+                            let constraint =
+                                ir::Expression::cmpeq(dst.clone().into(), src.clone())?;
                             constraints.push(constraint);
                         }
                     }
@@ -318,37 +306,32 @@ impl<'r> fixed_point::FixedPointAnalysis<'r, State, ir::Constant>
                         for variable in used_variables {
                             let variable_expression: ir::Expression<ir::Constant> =
                                 variable.clone().into();
-                            let lo = solver::minimize(&constraints,
-                                                      &variable_expression)?;
-                            let hi = solver::maximize(&constraints,
-                                                      &variable_expression)?;
+                            let lo = solver::minimize(&constraints, &variable_expression)?;
+                            let hi = solver::maximize(&constraints, &variable_expression)?;
 
                             let lo: Value = match lo {
                                 Some(constant) => Value::Value(constant),
-                                None => Value::Top(variable.bits())
+                                None => Value::Top(variable.bits()),
                             };
 
                             let hi: Value = match hi {
                                 Some(constant) => Value::Value(constant),
-                                None => Value::Top(variable.bits())
+                                None => Value::Top(variable.bits()),
                             };
 
                             let narrow_interval = Interval::new(lo, hi);
-                            let narrow_strided_interval =
-                                StridedInterval::new(narrow_interval, 0);
+                            let narrow_strided_interval = StridedInterval::new(narrow_interval, 0);
 
                             let strided_interval = match state.variable(variable) {
                                 Some(si) => si.narrow(&narrow_strided_interval)?,
-                                None => narrow_strided_interval
+                                None => narrow_strided_interval,
                             };
 
                             state.set(variable.clone(), strided_interval);
                         }
-                    }
-                    else {
+                    } else {
                         for variable in condition.variables() {
-                            state.set(variable.clone(),
-                                      StridedInterval::new_top(variable.bits()));
+                            state.set(variable.clone(), StridedInterval::new_top(variable.bits()));
                         }
                     }
 
@@ -356,35 +339,31 @@ impl<'r> fixed_point::FixedPointAnalysis<'r, State, ir::Constant>
 
                     // Now constrain the variables in the expression
                     for variable in condition.variables() {
+                        let lo = solver::minimize(&constraints, &variable.clone().into())?;
+                        let hi = solver::maximize(&constraints, &variable.clone().into())?;
 
-                        let lo = solver::minimize(&constraints,
-                                                  &variable.clone().into())?;
-                        let hi = solver::maximize(&constraints,
-                                                  &variable.clone().into())?;
+                        let lo: Value = lo
+                            .map(|v| Value::Value(v))
+                            .unwrap_or(Value::Top(variable.bits()));
 
-                        let lo: Value =
-                            lo.map(|v| Value::Value(v))
-                              .unwrap_or(Value::Top(variable.bits()));
-
-                        let hi: Value =
-                            hi.map(|v| Value::Value(v))
-                              .unwrap_or(Value::Top(variable.bits()));
+                        let hi: Value = hi
+                            .map(|v| Value::Value(v))
+                            .unwrap_or(Value::Top(variable.bits()));
 
                         let narrow_interval = Interval::new(lo, hi);
-                        let narrow_strided_interval =
-                            StridedInterval::new(narrow_interval, 0);
+                        let narrow_strided_interval = StridedInterval::new(narrow_interval, 0);
 
                         let strided_interval = match state.variable(variable) {
                             Some(si) => si.narrow(&narrow_strided_interval)?,
-                            None => narrow_strided_interval
+                            None => narrow_strided_interval,
                         };
 
                         state.set(variable.clone(), strided_interval);
                     }
                 }
                 state
-            },
-            ir::RefFunctionLocation::EmptyBlock(_) => state
+            }
+            ir::RefFunctionLocation::EmptyBlock(_) => state,
         };
 
         self.visit(program_location);

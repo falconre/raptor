@@ -1,35 +1,29 @@
-use error::*;
 use analysis::ksets::KSetValue;
 use analysis::strided_intervals::StridedInterval;
+use error::*;
 use ir;
-use std::collections::BTreeSet;
 use std::cmp::{Ordering, PartialOrd};
+use std::collections::BTreeSet;
 use std::fmt;
-
 
 const DEFAULT_K: usize = 4;
 const MAX_K: usize = 128;
 
-
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct KSet {
     k: usize,
-    value: KSetValue
+    value: KSetValue,
 }
-
 
 impl KSet {
     pub fn new(k: usize, value: KSetValue) -> KSet {
-        KSet {
-            k: k,
-            value: value
-        }
+        KSet { k: k, value: value }
     }
 
     pub fn new_top(bits: usize) -> KSet {
         KSet {
             k: DEFAULT_K,
-            value: KSetValue::Top(bits)
+            value: KSetValue::Top(bits),
         }
     }
 
@@ -39,34 +33,32 @@ impl KSet {
 
         KSet {
             k: DEFAULT_K,
-            value: KSetValue::Value(hashset)
+            value: KSetValue::Value(hashset),
         }
     }
 
     pub fn from_strided_interval(strided_interval: &StridedInterval) -> KSet {
-        if    strided_interval.interval().lo().is_top()
-           || strided_interval.interval().hi().is_top()
-           || strided_interval.bits() > 64 {
-            
+        if strided_interval.interval().lo().is_top()
+            || strided_interval.interval().hi().is_top()
+            || strided_interval.bits() > 64
+        {
             return KSet::new_top(strided_interval.bits());
         }
 
-        let lo =
-            strided_interval
-                .interval()
-                .lo()
-                .value()
-                .unwrap()
-                .value_u64()
-                .unwrap();
-        let hi =
-            strided_interval
-                .interval()
-                .hi()
-                .value()
-                .unwrap()
-                .value_u64()
-                .unwrap();
+        let lo = strided_interval
+            .interval()
+            .lo()
+            .value()
+            .unwrap()
+            .value_u64()
+            .unwrap();
+        let hi = strided_interval
+            .interval()
+            .hi()
+            .value()
+            .unwrap()
+            .value_u64()
+            .unwrap();
 
         let stride = strided_interval.stride();
         let stride = if stride == 0 { 1 } else { stride };
@@ -85,9 +77,15 @@ impl KSet {
         KSet::new(k as usize, KSetValue::Value(hashset))
     }
 
-    pub fn k(&self) -> usize { self.k }
-    pub fn value(&self) -> &KSetValue { &self.value }
-    pub fn bits(&self) -> usize { self.value().bits() }
+    pub fn k(&self) -> usize {
+        self.k
+    }
+    pub fn value(&self) -> &KSetValue {
+        &self.value
+    }
+    pub fn bits(&self) -> usize {
+        self.value().bits()
+    }
 
     pub fn join(&self, other: &KSet) -> KSet {
         let k = self.k().max(other.k());
@@ -96,27 +94,30 @@ impl KSet {
     }
 
     fn set_top_if_above_k(self) -> KSet {
-        if self.value()
-               .value()
-               .map(|value| value.len() > self.k())
-               .unwrap_or(false) {
+        if self
+            .value()
+            .value()
+            .map(|value| value.len() > self.k())
+            .unwrap_or(false)
+        {
             KSet::new(self.k(), KSetValue::Top(self.bits()))
-        }
-        else {
+        } else {
             self
         }
     }
 
     fn binop<F>(&self, rhs: &KSet, f: F) -> Result<KSet>
-        where F: Fn(&KSetValue, &KSetValue) -> Result<KSetValue> {
-
+    where
+        F: Fn(&KSetValue, &KSetValue) -> Result<KSetValue>,
+    {
         let value = f(self.value(), rhs.value())?;
         Ok(KSet::new(self.k(), value).set_top_if_above_k())
     }
 
     fn extop<F>(&self, bits: usize, f: F) -> Result<KSet>
-        where F: Fn(&KSetValue, usize) -> Result<KSetValue> {
-
+    where
+        F: Fn(&KSetValue, usize) -> Result<KSetValue>,
+    {
         let value = f(self.value(), bits)?;
         Ok(KSet::new(self.k(), value).set_top_if_above_k())
     }
@@ -201,19 +202,18 @@ impl KSet {
     pub fn ite(cond: &KSet, then: &KSet, else_: &KSet) -> Result<KSet> {
         let k = match cond.value() {
             KSetValue::Top(_) => then.k().max(else_.k()),
-            KSetValue::Value(value) =>
+            KSetValue::Value(value) => {
                 if value.len() == 1 {
                     if value.iter().next().unwrap().is_one() {
                         then.k()
-                    }
-                    else {
+                    } else {
                         else_.k()
                     }
-                }
-                else {
+                } else {
                     then.k().max(else_.k())
-                },
-            KSetValue::Bottom(_) => then.k().max(else_.k())
+                }
+            }
+            KSetValue::Bottom(_) => then.k().max(else_.k()),
         };
 
         let value = KSetValue::ite(cond.value(), then.value(), else_.value())?;
@@ -221,18 +221,17 @@ impl KSet {
     }
 }
 
-
 impl fmt::Display for KSet {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}[{}]", self.k(), self.value())
     }
 }
 
-
 impl ir::Value for KSet {
-    fn bits(&self) -> usize { KSet::bits(self) }
+    fn bits(&self) -> usize {
+        KSet::bits(self)
+    }
 }
-
 
 impl PartialOrd for KSet {
     fn partial_cmp(&self, other: &KSet) -> Option<Ordering> {
@@ -241,101 +240,101 @@ impl PartialOrd for KSet {
         if self.k() < other.k() {
             if order == Ordering::Greater {
                 None
-            }
-            else {
+            } else {
                 Some(Ordering::Less)
             }
-        }
-        else if self.k() > other.k() {
+        } else if self.k() > other.k() {
             if order == Ordering::Less {
                 None
-            }
-            else {
+            } else {
                 Some(Ordering::Greater)
             }
-        }
-        else {
+        } else {
             Some(order)
         }
     }
 }
 
-
 impl<'e> Into<ir::Expression<KSet>> for &'e ir::Expression<ir::Constant> {
     fn into(self) -> ir::Expression<KSet> {
         match self {
             ir::Expression::LValue(lvalue) => match lvalue.as_ref() {
-                ir::LValue::Variable(variable) =>
-                    variable.clone().into(),
-                ir::LValue::Dereference(dereference) =>
+                ir::LValue::Variable(variable) => variable.clone().into(),
+                ir::LValue::Dereference(dereference) => {
                     ir::Dereference::new(dereference.expression().into()).into()
+                }
             },
             ir::Expression::RValue(rvalue) => match rvalue.as_ref() {
-                ir::RValue::Value(constant) =>
-                    ir::RValue::Value(KSet::from_constant(constant.clone()))
-                        .into(),
-                ir::RValue::Reference(reference) =>
-                    ir::Reference::new(reference.expression().into(),
-                                       reference.bits()).into()
+                ir::RValue::Value(constant) => {
+                    ir::RValue::Value(KSet::from_constant(constant.clone())).into()
+                }
+                ir::RValue::Reference(reference) => {
+                    ir::Reference::new(reference.expression().into(), reference.bits()).into()
+                }
             },
-            ir::Expression::Add(lhs, rhs) =>
-                ir::Expression::add(lhs.as_ref().into(),
-                                    rhs.as_ref().into()).unwrap(),
-            ir::Expression::Sub(lhs, rhs) =>
-                ir::Expression::sub(lhs.as_ref().into(),
-                                    rhs.as_ref().into()).unwrap(),
-            ir::Expression::Mul(lhs, rhs) =>
-                ir::Expression::mul(lhs.as_ref().into(),
-                                    rhs.as_ref().into()).unwrap(),
-            ir::Expression::Divu(lhs, rhs) =>
-                ir::Expression::divu(lhs.as_ref().into(),
-                                     rhs.as_ref().into()).unwrap(),
-            ir::Expression::Modu(lhs, rhs) =>
-                ir::Expression::modu(lhs.as_ref().into(),
-                                     rhs.as_ref().into()).unwrap(),
-            ir::Expression::Divs(lhs, rhs) =>
-                ir::Expression::divs(lhs.as_ref().into(),
-                                     rhs.as_ref().into()).unwrap(),
-            ir::Expression::Mods(lhs, rhs) =>
-                ir::Expression::mods(lhs.as_ref().into(),
-                                     rhs.as_ref().into()).unwrap(),
-            ir::Expression::And(lhs, rhs) =>
-                ir::Expression::and(lhs.as_ref().into(),
-                                    rhs.as_ref().into()).unwrap(),
-            ir::Expression::Or(lhs, rhs) =>
-                ir::Expression::or(lhs.as_ref().into(),
-                                   rhs.as_ref().into()).unwrap(),
-            ir::Expression::Xor(lhs, rhs) =>
-                ir::Expression::xor(lhs.as_ref().into(),
-                                    rhs.as_ref().into()).unwrap(),
-            ir::Expression::Shl(lhs, rhs) =>
-                ir::Expression::shl(lhs.as_ref().into(),
-                                    rhs.as_ref().into()).unwrap(),
-            ir::Expression::Shr(lhs, rhs) =>
-                ir::Expression::shr(lhs.as_ref().into(),
-                                    rhs.as_ref().into()).unwrap(),
-            ir::Expression::Cmpeq(lhs, rhs) =>
-                ir::Expression::cmpeq(lhs.as_ref().into(),
-                                      rhs.as_ref().into()).unwrap(),
-            ir::Expression::Cmpneq(lhs, rhs) =>
-                ir::Expression::cmpneq(lhs.as_ref().into(),
-                                       rhs.as_ref().into()).unwrap(),
-            ir::Expression::Cmplts(lhs, rhs) =>
-                ir::Expression::cmplts(lhs.as_ref().into(),
-                                       rhs.as_ref().into()).unwrap(),
-            ir::Expression::Cmpltu(lhs, rhs) =>
-                ir::Expression::cmpltu(lhs.as_ref().into(),
-                                       rhs.as_ref().into()).unwrap(),
-            ir::Expression::Zext(bits, rhs) =>
-                ir::Expression::zext(*bits, rhs.as_ref().into()).unwrap(),
-            ir::Expression::Sext(bits, rhs) =>
-                ir::Expression::sext(*bits, rhs.as_ref().into()).unwrap(),
-            ir::Expression::Trun(bits, rhs) =>
-                ir::Expression::trun(*bits, rhs.as_ref().into()).unwrap(),
-            ir::Expression::Ite(cond, then, else_) =>
-                ir::Expression::ite(cond.as_ref().into(),
-                                    then.as_ref().into(),
-                                    else_.as_ref().into()).unwrap()
+            ir::Expression::Add(lhs, rhs) => {
+                ir::Expression::add(lhs.as_ref().into(), rhs.as_ref().into()).unwrap()
+            }
+            ir::Expression::Sub(lhs, rhs) => {
+                ir::Expression::sub(lhs.as_ref().into(), rhs.as_ref().into()).unwrap()
+            }
+            ir::Expression::Mul(lhs, rhs) => {
+                ir::Expression::mul(lhs.as_ref().into(), rhs.as_ref().into()).unwrap()
+            }
+            ir::Expression::Divu(lhs, rhs) => {
+                ir::Expression::divu(lhs.as_ref().into(), rhs.as_ref().into()).unwrap()
+            }
+            ir::Expression::Modu(lhs, rhs) => {
+                ir::Expression::modu(lhs.as_ref().into(), rhs.as_ref().into()).unwrap()
+            }
+            ir::Expression::Divs(lhs, rhs) => {
+                ir::Expression::divs(lhs.as_ref().into(), rhs.as_ref().into()).unwrap()
+            }
+            ir::Expression::Mods(lhs, rhs) => {
+                ir::Expression::mods(lhs.as_ref().into(), rhs.as_ref().into()).unwrap()
+            }
+            ir::Expression::And(lhs, rhs) => {
+                ir::Expression::and(lhs.as_ref().into(), rhs.as_ref().into()).unwrap()
+            }
+            ir::Expression::Or(lhs, rhs) => {
+                ir::Expression::or(lhs.as_ref().into(), rhs.as_ref().into()).unwrap()
+            }
+            ir::Expression::Xor(lhs, rhs) => {
+                ir::Expression::xor(lhs.as_ref().into(), rhs.as_ref().into()).unwrap()
+            }
+            ir::Expression::Shl(lhs, rhs) => {
+                ir::Expression::shl(lhs.as_ref().into(), rhs.as_ref().into()).unwrap()
+            }
+            ir::Expression::Shr(lhs, rhs) => {
+                ir::Expression::shr(lhs.as_ref().into(), rhs.as_ref().into()).unwrap()
+            }
+            ir::Expression::Cmpeq(lhs, rhs) => {
+                ir::Expression::cmpeq(lhs.as_ref().into(), rhs.as_ref().into()).unwrap()
+            }
+            ir::Expression::Cmpneq(lhs, rhs) => {
+                ir::Expression::cmpneq(lhs.as_ref().into(), rhs.as_ref().into()).unwrap()
+            }
+            ir::Expression::Cmplts(lhs, rhs) => {
+                ir::Expression::cmplts(lhs.as_ref().into(), rhs.as_ref().into()).unwrap()
+            }
+            ir::Expression::Cmpltu(lhs, rhs) => {
+                ir::Expression::cmpltu(lhs.as_ref().into(), rhs.as_ref().into()).unwrap()
+            }
+            ir::Expression::Zext(bits, rhs) => {
+                ir::Expression::zext(*bits, rhs.as_ref().into()).unwrap()
+            }
+            ir::Expression::Sext(bits, rhs) => {
+                ir::Expression::sext(*bits, rhs.as_ref().into()).unwrap()
+            }
+            ir::Expression::Trun(bits, rhs) => {
+                ir::Expression::trun(*bits, rhs.as_ref().into()).unwrap()
+            }
+            ir::Expression::Ite(cond, then, else_) => ir::Expression::ite(
+                cond.as_ref().into(),
+                then.as_ref().into(),
+                else_.as_ref().into(),
+            )
+            .unwrap(),
         }
     }
 }
