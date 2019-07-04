@@ -1,4 +1,4 @@
-use crate::modules::Module;
+use crate::modules;
 use analysis;
 use analysis::stack_pointer_offsets::StackPointerOffsets;
 use error::*;
@@ -10,11 +10,19 @@ use translator::{calls, TranslationInformation};
 
 pub struct FunctionTranslator<'t> {
     translation_information: TranslationInformation<'t>,
-    modules: Vec<Box<Module>>,
+    modules: Vec<Box<modules::Module>>,
 }
 
 impl<'t> FunctionTranslator<'t> {
     pub fn new(translation_information: TranslationInformation<'t>) -> FunctionTranslator<'t> {
+        let mut modules = Vec::new();
+
+        if translation_information.architecture().name() == "mips"
+            || translation_information.architecture().name() == "mipsel"
+        {
+            modules.push(modules::MipsT9::new())
+        }
+
         FunctionTranslator {
             translation_information: translation_information,
             modules: Vec::new(),
@@ -25,7 +33,7 @@ impl<'t> FunctionTranslator<'t> {
         &self.translation_information
     }
 
-    pub fn modules(&self) -> &[Box<Module>] {
+    pub fn modules(&self) -> &[Box<modules::Module>] {
         &self.modules
     }
 

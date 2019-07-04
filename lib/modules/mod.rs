@@ -10,8 +10,12 @@ pub trait Module {
 
 pub struct MipsT9 {}
 
-impl Module for MipsT9 {
-    fn pre_analysis_function(&self, function: &mut ir::Function<ir::Constant>) -> Result<()> {
+impl MipsT9 {
+    pub fn new() -> MipsT9 {
+        MipsT9 {}
+    }
+
+    pub fn pre_analysis_function(&self, function: &mut ir::Function<ir::Constant>) -> Result<()> {
         // Get the entry for this function
         let entry_index = match function.control_flow_graph().entry() {
             Some(index) => index,
@@ -31,5 +35,11 @@ impl Module for MipsT9 {
         block.prepend_operation(operation);
 
         Ok(())
+    }
+}
+
+impl Module for MipsT9 {
+    fn pre_analysis_function(&self, mut function: &mut ir::Function<ir::Constant>) -> Result<()> {
+        self.pre_analysis_function(&mut function)
     }
 }
