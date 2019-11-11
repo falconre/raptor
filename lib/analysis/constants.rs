@@ -362,6 +362,7 @@ impl<'r, 'c> fixed_point::FixedPointAnalysis<'r, Constants, ir::Constant>
                             .unwrap_or(false);
 
                         if is_read_only_memory || is_t9_load {
+                            println!("$t9 load at {}", location);
                             let value = self
                                 .backing
                                 .and_then(|backing| {

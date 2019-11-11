@@ -41,6 +41,10 @@ impl<V: Value> Instruction<V> {
         &mut self.operation
     }
 
+    pub fn set_operation(&mut self, operation: Operation<V>) {
+        self.operation = operation;
+    }
+
     pub fn address(&self) -> Option<u64> {
         self.address.clone()
     }

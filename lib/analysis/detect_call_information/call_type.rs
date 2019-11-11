@@ -10,7 +10,7 @@ pub struct CallType {
 
 impl CallType {
     pub fn new_arch(
-        architecture: &Architecture,
+        architecture: &dyn Architecture,
         calling_convention: &CallingConvention,
     ) -> CallType {
         match calling_convention.return_address_type() {

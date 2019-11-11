@@ -10,7 +10,7 @@ use translator::{calls, TranslationInformation};
 
 pub struct FunctionTranslator<'t> {
     translation_information: TranslationInformation<'t>,
-    modules: Vec<Box<modules::Module>>,
+    modules: Vec<Box<dyn modules::Module>>,
 }
 
 impl<'t> FunctionTranslator<'t> {
@@ -20,12 +20,13 @@ impl<'t> FunctionTranslator<'t> {
         if translation_information.architecture().name() == "mips"
             || translation_information.architecture().name() == "mipsel"
         {
-            modules.push(modules::MipsT9::new())
+            let module: Box<dyn modules::Module> = Box::new(modules::MipsT9::new());
+            modules.push(module);
         }
 
         FunctionTranslator {
             translation_information: translation_information,
-            modules: Vec::new(),
+            modules: modules,
         }
     }
 
@@ -33,7 +34,7 @@ impl<'t> FunctionTranslator<'t> {
         &self.translation_information
     }
 
-    pub fn modules(&self) -> &[Box<modules::Module>] {
+    pub fn modules(&self) -> &[Box<dyn modules::Module>] {
         &self.modules
     }
 
@@ -294,6 +295,13 @@ impl<'t> FunctionTranslator<'t> {
         Ok((new_function, strided_intervals))
     }
 
+    pub fn apply_modules(&self, mut function: &mut ir::Function<ir::Constant>) -> Result<()> {
+        for module in self.modules() {
+            module.pre_analysis_function(&mut function)?;
+        }
+        Ok(())
+    }
+
     pub fn translate_function(
         &self,
         function: &il::Function,
@@ -301,9 +309,7 @@ impl<'t> FunctionTranslator<'t> {
         let mut function =
             ir::Function::<ir::Constant>::from_il(function).expect("Failed to translate function");
 
-        for module in self.modules() {
-            module.pre_analysis_function(&mut function)?;
-        }
+        self.apply_modules(&mut function)?;
 
         self.optimize_function(function)
     }

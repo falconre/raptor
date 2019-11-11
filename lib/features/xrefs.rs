@@ -26,6 +26,9 @@ impl XRefs {
             .map(move |location| location.instruction().unwrap().clone());
 
         for instruction in instructions {
+            if instruction.address().is_none() {
+                continue;
+            }
             match instruction.operation() {
                 ir::Operation::Assign { src, .. } => {
                     let option_value = src.constant().and_then(|constant| constant.value_u64());

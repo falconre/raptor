@@ -19,8 +19,10 @@ impl MipsT9 {
         // Get the entry for this function
         let entry_index = match function.control_flow_graph().entry() {
             Some(index) => index,
-            None => return Ok(()),
+            None => bail!("Could not find function entrypoint"),
         };
+
+        println!("Found entry index: 0x{:x}", entry_index);
 
         let function_address = function.address();
 

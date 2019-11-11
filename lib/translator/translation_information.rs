@@ -7,7 +7,7 @@ use std::collections::HashMap;
 
 /// A standard set of information needed to translate things
 pub struct TranslationInformation<'i> {
-    architecture: &'i Architecture,
+    architecture: &'i dyn Architecture,
     calling_convention: &'i CallingConvention,
     backing: &'i backing::Memory,
     symbols: &'i HashMap<u64, Symbol>,
@@ -15,7 +15,7 @@ pub struct TranslationInformation<'i> {
 
 impl<'i> TranslationInformation<'i> {
     pub fn new(
-        architecture: &'i Architecture,
+        architecture: &'i dyn Architecture,
         calling_convention: &'i CallingConvention,
         backing: &'i backing::Memory,
         symbols: &'i HashMap<u64, Symbol>,
@@ -28,7 +28,7 @@ impl<'i> TranslationInformation<'i> {
         }
     }
 
-    pub fn architecture(&self) -> &Architecture {
+    pub fn architecture(&self) -> &dyn Architecture {
         self.architecture
     }
     pub fn calling_convention(&self) -> &CallingConvention {

@@ -20,7 +20,7 @@ use ir;
 pub fn argument_identification(
     function: &ir::Function<ir::Constant>,
     calling_convention: &CallingConvention,
-    architecture: &Architecture,
+    architecture: &dyn Architecture,
     stack_pointer: &ir::Variable,
 ) -> Result<()> {
     let rd = reaching_definitions(function)?;

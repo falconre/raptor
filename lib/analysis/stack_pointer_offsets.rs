@@ -7,7 +7,7 @@ use std::collections::HashMap;
 
 pub fn stack_pointer_offsets<'f>(
     function: &'f ir::Function<ir::Constant>,
-    architecture: &Architecture,
+    architecture: &dyn Architecture,
 ) -> Result<HashMap<ir::ProgramLocation, StackPointerOffsets>> {
     // perform the initial analysis
     let spoa = StackPointerOffsetAnalysis::new(architecture.stack_pointer().into());

@@ -9,9 +9,9 @@ use std::collections::HashMap;
 use translator::{FunctionTranslator, TranslationInformation};
 
 pub struct ProgramTranslator<'t> {
-    architecture: Box<Architecture>,
+    architecture: Box<dyn Architecture>,
     calling_convention: CallingConvention,
-    loader: &'t Loader,
+    loader: &'t dyn Loader,
     backing: falcon::memory::backing::Memory,
     symbols: HashMap<u64, Symbol>,
     // relocations: HashMap<u64, Symbol>
@@ -19,9 +19,9 @@ pub struct ProgramTranslator<'t> {
 
 impl<'t> ProgramTranslator<'t> {
     pub fn new(
-        architecture: Box<Architecture>,
+        architecture: Box<dyn Architecture>,
         calling_convention: CallingConvention,
-        loader: &'t Loader,
+        loader: &'t dyn Loader,
     ) -> Result<ProgramTranslator<'t>> {
         let mut translator = ProgramTranslator {
             architecture: architecture,
@@ -147,7 +147,7 @@ impl<'t> ProgramTranslator<'t> {
         )
     }
 
-    pub fn architecture(&self) -> &Architecture {
+    pub fn architecture(&self) -> &dyn Architecture {
         self.architecture.as_ref()
     }
 
@@ -159,7 +159,7 @@ impl<'t> ProgramTranslator<'t> {
         &self.calling_convention
     }
 
-    pub fn loader(&self) -> &Loader {
+    pub fn loader(&self) -> &dyn Loader {
         self.loader
     }
 
