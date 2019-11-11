@@ -1,11 +1,12 @@
 [package]
 name = "falcon-raptor"
-version = "0.4.4"
+version = "0.4.6"
 homepage = "https://github.com/falconre/raptor"
 repository = "https://github.com/falconre/raptor"
 description = "Higher-level semantics over Falcon IL"
+authors = [ "Alex Eubanks <endeavor@rainbowsandpwnies.com>" ]
 readme = "README.md"
-license = "Apache 2.0"
+license = "Apache-2.0"
 
 [dependencies]
 error-chain = "0.12"
