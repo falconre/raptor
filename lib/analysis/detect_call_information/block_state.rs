@@ -1,6 +1,6 @@
-use analysis::detect_call_information::TaggedConstant;
-use error::*;
-use ir;
+use crate::analysis::detect_call_information::TaggedConstant;
+use crate::error::*;
+use crate::ir;
 use std::collections::HashMap;
 
 #[derive(Clone, Debug)]

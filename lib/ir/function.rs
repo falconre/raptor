@@ -1,6 +1,7 @@
-use error::*;
+use crate::error::*;
+use crate::ir::*;
 use falcon::il;
-use ir::*;
+use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct Function<V: Value> {

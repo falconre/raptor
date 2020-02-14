@@ -1,6 +1,7 @@
-use error::*;
+use crate::error::*;
+use crate::ir::*;
 use falcon::{il, RC};
-use ir::*;
+use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]

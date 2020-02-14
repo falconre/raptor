@@ -1,4 +1,4 @@
-use ir;
+use crate::ir;
 
 #[derive(Clone, Debug)]
 pub struct CallSite<'f> {

@@ -1,7 +1,7 @@
-use analysis::detect_call_information::ReturnType;
+use crate::analysis::detect_call_information::ReturnType;
+use crate::ir;
 use falcon::analysis::calling_convention::{CallingConvention, ReturnAddressType};
 use falcon::architecture::Architecture;
-use ir;
 
 pub struct CallType {
     return_type: ReturnType,

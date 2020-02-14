@@ -1,6 +1,6 @@
-use analysis::{fixed_point, LocationSet};
-use error::*;
-use ir;
+use crate::analysis::{fixed_point, LocationSet};
+use crate::error::*;
+use crate::ir;
 use std::collections::HashMap;
 
 /// Compute reaching definitions for the given function.

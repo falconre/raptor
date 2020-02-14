@@ -1,6 +1,6 @@
-use analysis::{use_def, LocationSet};
-use error::*;
-use ir;
+use crate::analysis::{use_def, LocationSet};
+use crate::error::*;
+use crate::ir;
 use std::collections::HashMap;
 
 pub fn variable_use_def<'f, V: ir::Value>(

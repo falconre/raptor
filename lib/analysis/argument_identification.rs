@@ -8,13 +8,13 @@
 //!   * Originate from a reference to a stack variable with an offset below 0
 //!
 
-use analysis::reaching_definitions;
-use analysis::stack_pointer_offsets::stack_pointer_offsets;
-use error::*;
+use crate::analysis::reaching_definitions;
+use crate::analysis::stack_pointer_offsets::stack_pointer_offsets;
+use crate::error::*;
+use crate::ir;
 use falcon::analysis::calling_convention::ArgumentType;
 use falcon::analysis::calling_convention::CallingConvention;
 use falcon::architecture::Architecture;
-use ir;
 
 /// Attempt to identify the arguments to function calls.
 pub fn argument_identification(

@@ -1,5 +1,5 @@
-use falcon_result;
-use ir;
+use crate::falcon_result;
+use crate::ir;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TaggedConstant<'t> {

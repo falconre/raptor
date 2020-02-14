@@ -40,7 +40,7 @@ pub use self::variable::Variable;
 
 pub type Constant = ::falcon::il::Constant;
 
-use error::*;
+use crate::error::*;
 
 pub trait Value:
     Clone + ::std::fmt::Debug + ::std::fmt::Display + Eq + ::std::hash::Hash + PartialEq + Send + Sync

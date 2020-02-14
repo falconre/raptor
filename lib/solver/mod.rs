@@ -3,9 +3,9 @@
 //! The z3 solver only works over certain expression types. Expressions given to
 //! the z3 solver must not include references or dereferences.
 
-use error::*;
+use crate::error::*;
+use crate::ir;
 use falcon_z3::{Ast, Check, Config, Context, Model, Optimize, Solver};
-use ir;
 
 fn return_solver_result(
     solver: &Solver,

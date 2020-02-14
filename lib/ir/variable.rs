@@ -1,5 +1,6 @@
+use crate::ir::*;
 use falcon::il;
-use ir::*;
+use serde::{Deserialize, Serialize};
 use std::fmt;
 
 /// Multiple types of variables

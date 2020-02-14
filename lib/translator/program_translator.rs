@@ -1,12 +1,12 @@
-use error::*;
+use crate::error::*;
+use crate::ir;
+use crate::translator::{FunctionTranslator, TranslationInformation};
 use falcon;
 use falcon::analysis::calling_convention::CallingConvention;
 use falcon::architecture::Architecture;
 use falcon::loader::{Elf, Loader, Symbol};
 use falcon::translator::TranslationMemory;
-use ir;
 use std::collections::HashMap;
-use translator::{FunctionTranslator, TranslationInformation};
 
 pub struct ProgramTranslator<'t> {
     architecture: Box<dyn Architecture>,
@@ -42,14 +42,6 @@ impl<'t> ProgramTranslator<'t> {
 
         starting_symbols.sort();
 
-        for symbol in starting_symbols {
-            trace!(
-                "Starting symbols: 0x{:08x} = {}",
-                symbol.address(),
-                symbol.name()
-            );
-        }
-
         Ok(translator)
     }
 
@@ -75,8 +67,6 @@ impl<'t> ProgramTranslator<'t> {
             if name != ".plt" {
                 continue;
             }
-
-            trace!("found plt");
 
             let start = section_header.sh_addr;
 
@@ -107,12 +97,6 @@ impl<'t> ProgramTranslator<'t> {
                                 Some(address) => address,
                                 None => continue,
                             };
-
-                            trace!(
-                                "Looking for symbol plt_address=0x{:x}, got_address=0x{:x}",
-                                plt_address,
-                                got_address
-                            );
 
                             if let Some(symbol) = self.symbol(got_address).cloned() {
                                 plt_symbols.push(Symbol::new(symbol.name(), plt_address));

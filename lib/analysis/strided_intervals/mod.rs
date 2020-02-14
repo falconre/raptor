@@ -1,8 +1,8 @@
 //! An incomplete Strided Intervals implementation.
-use analysis::{fixed_point, use_def, LocationSet};
-use error::*;
-use ir;
-use solver;
+use crate::analysis::{fixed_point, use_def, LocationSet};
+use crate::error::*;
+use crate::ir;
+use crate::solver;
 use std::cell::RefCell;
 use std::cmp::{Ordering, PartialOrd};
 use std::collections::{HashMap, HashSet};

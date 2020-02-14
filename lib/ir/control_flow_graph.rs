@@ -1,6 +1,7 @@
-use error::*;
+use crate::error::*;
+use crate::ir::*;
 use falcon::{graph::Graph, il};
-use ir::*;
+use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct ControlFlowGraph<V: Value> {
@@ -71,11 +72,11 @@ impl<V: Value> ControlFlowGraph<V> {
         self.graph.edges_mut()
     }
 
-    pub fn edges_out(&self, block_index: usize) -> Result<&Vec<Edge<V>>> {
+    pub fn edges_out(&self, block_index: usize) -> Result<Vec<&Edge<V>>> {
         Ok(self.graph.edges_out(block_index)?)
     }
 
-    pub fn edges_in(&self, block_index: usize) -> Result<&Vec<Edge<V>>> {
+    pub fn edges_in(&self, block_index: usize) -> Result<Vec<&Edge<V>>> {
         Ok(self.graph.edges_in(block_index)?)
     }
 }

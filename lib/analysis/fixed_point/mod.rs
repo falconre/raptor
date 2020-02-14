@@ -1,7 +1,7 @@
 //! A fixed-point engine for data-flow analysis.
 
-use error::*;
-use ir;
+use crate::error::*;
+use crate::ir;
 use std::collections::{BinaryHeap, HashMap, HashSet};
 use std::fmt::Debug;
 

@@ -1,5 +1,5 @@
-use error::*;
-use ir;
+use crate::error::*;
+use crate::ir;
 use std::cmp::{Ordering, PartialOrd};
 use std::collections::HashSet;
 

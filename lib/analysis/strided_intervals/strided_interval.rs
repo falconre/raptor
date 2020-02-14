@@ -1,6 +1,6 @@
-use analysis::strided_intervals::{Interval, Value};
-use error::*;
-use ir;
+use crate::analysis::strided_intervals::{Interval, Value};
+use crate::error::*;
+use crate::ir;
 use std::cmp::Ordering;
 use std::fmt;
 

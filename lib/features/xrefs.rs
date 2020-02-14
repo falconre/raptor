@@ -1,4 +1,4 @@
-use ir;
+use crate::ir;
 use std::collections::{HashMap, HashSet};
 
 #[derive(Clone, Debug)]

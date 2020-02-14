@@ -1,8 +1,8 @@
 //! Use-Definition Analysis
 
-use analysis::{reaching_definitions, LocationSet};
-use error::*;
-use ir;
+use crate::analysis::{reaching_definitions, LocationSet};
+use crate::error::*;
+use crate::ir;
 use std::collections::HashMap;
 
 #[allow(dead_code)]

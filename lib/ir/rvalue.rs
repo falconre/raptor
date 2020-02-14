@@ -1,4 +1,5 @@
-use ir::*;
+use crate::ir::*;
+use serde::{Deserialize, Serialize};
 use std::fmt;
 
 #[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]

@@ -1,5 +1,5 @@
-use error::*;
-use ir;
+use crate::error::*;
+use crate::ir;
 use std::cmp::Ordering;
 use std::collections::BTreeSet;
 use std::fmt;

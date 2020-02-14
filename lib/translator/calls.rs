@@ -1,11 +1,10 @@
-use analysis;
-use analysis::stack_pointer_offsets::StackPointerOffsets;
-use data::{ParameterType, FUNCTIONS};
-use error::*;
+use crate::analysis::stack_pointer_offsets::StackPointerOffsets;
+use crate::data::{ParameterType, FUNCTIONS};
+use crate::error::*;
+use crate::translator::TranslationInformation;
+use crate::{analysis, ir};
 use falcon::analysis::calling_convention::ArgumentType;
-use ir;
 use std::collections::{HashMap, HashSet};
-use translator::TranslationInformation;
 
 // Functions that are annotated as no_return should have that reflected
 // in the graph.

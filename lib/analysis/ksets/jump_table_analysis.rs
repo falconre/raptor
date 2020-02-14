@@ -1,11 +1,11 @@
-use analysis::fixed_point;
-use analysis::ksets::{KSet, KSetValue};
-use analysis::strided_intervals;
-use analysis::strided_intervals::StridedInterval;
-use error::*;
+use crate::analysis::fixed_point;
+use crate::analysis::ksets::{KSet, KSetValue};
+use crate::analysis::strided_intervals;
+use crate::analysis::strided_intervals::StridedInterval;
+use crate::error::*;
+use crate::ir;
 use falcon::il;
 use falcon::memory::backing;
-use ir;
 use std::cmp::{Ordering, PartialOrd};
 use std::collections::{BTreeSet, HashMap};
 

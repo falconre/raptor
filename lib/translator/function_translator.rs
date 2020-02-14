@@ -1,12 +1,9 @@
-use crate::modules;
-use analysis;
-use analysis::stack_pointer_offsets::StackPointerOffsets;
-use error::*;
+use crate::analysis::stack_pointer_offsets::StackPointerOffsets;
+use crate::error::*;
+use crate::translator::{calls, TranslationInformation};
+use crate::{analysis, ir, modules};
 use falcon::il;
-use ir;
 use std::collections::HashMap;
-
-use translator::{calls, TranslationInformation};
 
 pub struct FunctionTranslator<'t> {
     translation_information: TranslationInformation<'t>,

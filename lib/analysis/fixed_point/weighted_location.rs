@@ -1,6 +1,6 @@
 /// Weighted locations allow us to prioritze locations when performing fixed
 /// point calculations.
-use ir;
+use crate::ir;
 use std::cmp::{Ord, Ordering, PartialOrd};
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]

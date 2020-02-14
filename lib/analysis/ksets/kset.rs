@@ -1,7 +1,7 @@
-use analysis::ksets::KSetValue;
-use analysis::strided_intervals::StridedInterval;
-use error::*;
-use ir;
+use crate::analysis::ksets::KSetValue;
+use crate::analysis::strided_intervals::StridedInterval;
+use crate::error::*;
+use crate::ir;
 use std::cmp::{Ordering, PartialOrd};
 use std::collections::BTreeSet;
 use std::fmt;

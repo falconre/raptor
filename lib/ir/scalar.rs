@@ -1,4 +1,5 @@
 use falcon::il;
+use serde::{Deserialize, Serialize};
 use std::fmt;
 
 /// A `Scalar` is a variable which holds a single value.

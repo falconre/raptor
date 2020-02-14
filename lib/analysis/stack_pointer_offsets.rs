@@ -1,7 +1,7 @@
-use analysis::fixed_point;
-use error::*;
+use crate::analysis::fixed_point;
+use crate::error::*;
+use crate::ir;
 use falcon::architecture::Architecture;
-use ir;
 use std::cmp::{Ordering, PartialOrd};
 use std::collections::HashMap;
 
@@ -278,7 +278,11 @@ impl AnalysisValue {
     }
 }
 
-fn eval_binop<F>(lhs: &AnalysisValue, rhs: &AnalysisValue, op: F) -> ::error::Result<AnalysisValue>
+fn eval_binop<F>(
+    lhs: &AnalysisValue,
+    rhs: &AnalysisValue,
+    op: F,
+) -> crate::error::Result<AnalysisValue>
 where
     F: Fn(&ir::Constant, &ir::Constant) -> ::falcon::error::Result<ir::Constant>,
 {
@@ -300,7 +304,7 @@ where
     })
 }
 
-fn eval(expression: &ir::Expression<AnalysisValue>) -> ::error::Result<AnalysisValue> {
+fn eval(expression: &ir::Expression<AnalysisValue>) -> crate::error::Result<AnalysisValue> {
     Ok(match expression {
         ir::Expression::LValue(lvalue) => AnalysisValue::Top(lvalue.bits()),
         ir::Expression::RValue(rvalue) => match rvalue.as_ref() {

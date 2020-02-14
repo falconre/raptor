@@ -1,8 +1,8 @@
+use crate::ir;
 use falcon::analysis::calling_convention::CallingConvention;
 use falcon::architecture::Architecture;
 use falcon::loader::Symbol;
 use falcon::memory::backing;
-use ir;
 use std::collections::HashMap;
 
 /// A standard set of information needed to translate things

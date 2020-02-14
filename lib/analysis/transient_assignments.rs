@@ -3,9 +3,9 @@
 //! In assembly, callees often times save variables. We want to detect these,
 //! so we can remove the code for the saving and restoring of these variables.
 
-use analysis::fixed_point::{fixed_point_forward, incoming_results, FixedPointAnalysis};
-use error::*;
-use ir;
+use crate::analysis::fixed_point::{fixed_point_forward, incoming_results, FixedPointAnalysis};
+use crate::error::*;
+use crate::ir;
 use std::cmp::{Ordering, PartialOrd};
 use std::collections::HashMap;
 

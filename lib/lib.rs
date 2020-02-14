@@ -1,15 +1,7 @@
-extern crate falcon;
 #[macro_use]
 extern crate error_chain;
-extern crate falcon_z3;
-extern crate goblin;
 #[macro_use]
 extern crate lazy_static;
-#[macro_use]
-extern crate log;
-extern crate serde;
-#[macro_use]
-extern crate serde_derive;
 
 pub mod analysis;
 pub mod features;

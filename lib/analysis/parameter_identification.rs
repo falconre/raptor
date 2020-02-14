@@ -8,9 +8,9 @@
 //!   * Originate from a reference to a stack variable with an offset below 0
 //!
 
-use analysis::variable_use_def;
-use error::*;
-use ir;
+use crate::analysis::variable_use_def;
+use crate::error::*;
+use crate::ir;
 use std::collections::HashSet;
 
 /// Attempt to identify the variables and stack arguments which are the incoming

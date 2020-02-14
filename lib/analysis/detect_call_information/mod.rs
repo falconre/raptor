@@ -1,8 +1,8 @@
 //! Automatically detect inter-procedural call information.
 
-use analysis::transient_assignments::{transient_assignments, TransientAssignments};
-use error::*;
-use ir;
+use crate::analysis::transient_assignments::{transient_assignments, TransientAssignments};
+use crate::error::*;
+use crate::ir;
 use std::collections::HashMap;
 
 mod block_state;
