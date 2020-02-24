@@ -135,6 +135,4 @@ impl<V: Value> Function<V> {
 
         locations
     }
-
-    //pub fn locations(&self) -> Vec<RefFunctionLocation>
 }

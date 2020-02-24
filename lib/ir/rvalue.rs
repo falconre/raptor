@@ -24,7 +24,7 @@ impl<V: Value> RValue<V> {
     }
 
     /// A stack pointer is a `Reference` that wraps a `StackVariable`
-    pub fn stack_variable(&self) -> Option<&StackVariable> {
+    pub fn stack_pointer(&self) -> Option<&StackVariable> {
         self.reference()
             .and_then(|reference| reference.expression().variable())
             .and_then(|variable| variable.stack_variable())

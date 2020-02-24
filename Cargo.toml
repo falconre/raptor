@@ -1,6 +1,6 @@
 [package]
 name = "falcon-raptor"
-version = "0.4.8"
+version = "0.4.9"
 homepage = "https://github.com/falconre/raptor"
 repository = "https://github.com/falconre/raptor"
 description = "Higher-level semantics over Falcon IL"
@@ -11,8 +11,8 @@ edition = "2018"
 
 [dependencies]
 error-chain = "0.12"
-falcon = {version="0.4.10", features=["thread_safe"]}
-falcon-z3 = "0.4.10"
+falcon = "0.4.11"
+falcon-z3 = "0.4.11"
 goblin = "0.2"
 lazy_static = "1.0"
 log = "0.4"
