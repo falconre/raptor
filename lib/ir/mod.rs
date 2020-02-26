@@ -283,7 +283,7 @@ pub fn reduce(expr: &Expression<Constant>) -> Result<Expression<Constant>> {
     };
 
     if expr_out == *expr {
-        if let Some(expr) = simplify(expr) {
+        if let Some(expr) = simplify(expr)? {
             reduce(&expr)
         } else if expr.all_constants() {
             Ok(eval(expr)?.into())
@@ -295,7 +295,7 @@ pub fn reduce(expr: &Expression<Constant>) -> Result<Expression<Constant>> {
     }
 }
 
-pub fn simplify(expr: &Expression<Constant>) -> Option<Expression<Constant>> {
+pub fn simplify(expr: &Expression<Constant>) -> Result<Option<Expression<Constant>>> {
     match expr {
         Expression::Add(lhs, rhs) => {
             if rhs
@@ -303,16 +303,67 @@ pub fn simplify(expr: &Expression<Constant>) -> Option<Expression<Constant>> {
                 .map(|constant| constant.is_zero())
                 .unwrap_or(false)
             {
-                return Some(lhs.as_ref().clone());
+                return Ok(Some(lhs.as_ref().clone()));
             } else if lhs
                 .constant()
                 .map(|constant| constant.is_zero())
                 .unwrap_or(false)
             {
-                return Some(rhs.as_ref().clone());
+                return Ok(Some(rhs.as_ref().clone()));
+            }
+        }
+        Expression::Sub(lhs, rhs) => {
+            if let Some(rhs_constant) = rhs.as_ref().constant() {
+                match lhs.as_ref() {
+                    // (ll + rr) - rhs
+                    Expression::Add(ll, rr) => {
+                        if let Some(constant) = ll.as_ref().constant() {
+                            return Ok(Some(Expression::add(
+                                constant.sub(rhs_constant)?.into(),
+                                rr.as_ref().clone().into(),
+                            )?));
+                        }
+                        if let Some(constant) = rr.as_ref().constant() {
+                            return Ok(Some(Expression::add(
+                                ll.as_ref().clone().into(),
+                                constant.sub(rhs_constant)?.into(),
+                            )?));
+                        }
+                        if let Some(stack_variable) = ll.as_ref().stack_pointer() {
+                            let bits = ll.reference().unwrap().bits();
+                            if let Some(rci64) = rhs_constant.value_i64() {
+                                return Ok(Some(Expression::add(
+                                    Reference::new(
+                                        StackVariable::new(
+                                            stack_variable.offset() - rci64 as isize,
+                                            stack_variable.bits()
+                                        ).into(),
+                                        bits
+                                    ).into(),
+                                    rr.as_ref().clone().into()
+                                )?));
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+        Expression::Mul(lhs, rhs) => {
+            if lhs.constant().map(|constant| constant.is_one()).unwrap_or(false) {
+                return Ok(Some(rhs.as_ref().clone()));
+            }
+            if lhs.constant().map(|constant| constant.is_zero()).unwrap_or(false) {
+                return Ok(Some(Constant::new(0, lhs.bits()).into()));
+            }
+            if rhs.constant().map(|constant| constant.is_one()).unwrap_or(false) {
+                return Ok(Some(lhs.as_ref().clone()));
+            }
+            if rhs.constant().map(|constant| constant.is_zero()).unwrap_or(false) {
+                return Ok(Some(Constant::new(0, rhs.bits()).into()));
             }
         }
         _ => {}
     }
-    None
+    Ok(None)
 }

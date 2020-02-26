@@ -400,7 +400,7 @@ impl fmt::Display for FunctionLocation {
                 write!(f, "FunctionLocation::EmptyBlock({})", block_index)
             }
             FunctionLocation::Edge(head_index, tail_index) => {
-                write!(f, "FunctionLocation::Edge({}, {}", head_index, tail_index)
+                write!(f, "FunctionLocation::Edge({}, {})", head_index, tail_index)
             }
         }
     }
@@ -446,5 +446,11 @@ impl<'r, V: Value> From<RefProgramLocation<'r, V>> for ProgramLocation {
                 .expect("Could not get function index"),
             rpl.function_location.clone().into(),
         )
+    }
+}
+
+impl fmt::Display for ProgramLocation {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "f:{} {}", self.function_index, self.function_location)
     }
 }

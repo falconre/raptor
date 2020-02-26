@@ -10,6 +10,12 @@ pub struct Program<V: Value> {
 }
 
 impl<V: Value> Program<V> {
+    pub fn new() -> Program<V> {
+        Program {
+            functions: BTreeMap::new(),
+        }
+    }
+
     pub fn from_il(program: &il::Program) -> Result<Program<Constant>> {
         let functions: ::std::result::Result<BTreeMap<usize, RC<Function<Constant>>>, Error> =
             program.functions_map().into_iter().try_fold(

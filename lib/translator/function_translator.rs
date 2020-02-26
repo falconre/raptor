@@ -1,8 +1,10 @@
+use crate::analysis::ksets::JumpTable;
 use crate::analysis::stack_pointer_offsets::StackPointerOffsets;
 use crate::error::*;
 use crate::translator::{calls, TranslationInformation};
 use crate::{analysis, ir, modules};
 use falcon::il;
+use falcon::memory::MemoryPermissions;
 use std::collections::HashMap;
 
 pub struct FunctionTranslator<'t> {
@@ -251,47 +253,6 @@ impl<'t> FunctionTranslator<'t> {
         Ok(new_function)
     }
 
-    /// This returns a new function because sometimes we add debugging
-    /// comments in the function
-    pub fn strided_intervals(
-        &self,
-        function: &ir::Function<ir::Constant>,
-    ) -> Result<(
-        ir::Function<ir::Constant>,
-        HashMap<ir::ProgramLocation, analysis::strided_intervals::State>,
-    )> {
-        let strided_intervals = analysis::strided_intervals::strided_intervals(function)?;
-
-        let mut new_function = function.clone();
-
-        for block in new_function.blocks_mut() {
-            let block_index = block.index();
-            for instruction in block.instructions_mut() {
-                let fl = ir::FunctionLocation::Instruction(block_index, instruction.index());
-                let pl = ir::ProgramLocation::new(function.index().unwrap(), fl);
-
-                let state = &strided_intervals[&pl];
-
-                let mut si_comments = Vec::new();
-                // if let Some(variables) = instruction.variables() {
-                //     for variable in variables {
-                //         if let Some(si) = state.variable(variable) {
-                //             si_comments.push(format!("{}={}", variable, si));
-                //         }
-                //     }
-                // }
-
-                if let Some(si) = state.variable(&ir::scalar("temp_0.0", 32).into()) {
-                    si_comments.push(format!("temp_0.0={}", si));
-                }
-
-                instruction.set_comment(Some(si_comments.join(", ")));
-            }
-        }
-
-        Ok((new_function, strided_intervals))
-    }
-
     pub fn apply_modules(&self, mut function: &mut ir::Function<ir::Constant>) -> Result<()> {
         for module in self.modules() {
             module.pre_analysis_function(&mut function)?;
@@ -349,80 +310,92 @@ impl<'t> FunctionTranslator<'t> {
 
     /// The purpose of optimize_function_outer is to identify and resolve jump
     /// tables, but this is terribly broken atm.
-    pub fn optimize_function_outer(
-        &self,
-        function: ir::Function<ir::Constant>,
-    ) -> Result<ir::Function<ir::Constant>> {
-        self.optimize_function_inner(function)
-    }
-    /*
-    pub fn optimize_function_outer(
-        &self,
-        mut function: ir::Function<ir::Constant>
-    ) -> Result<ir::Function<ir::Constant>> {
+    // pub fn optimize_function_outer(
+    //     &self,
+    //     function: ir::Function<ir::Constant>,
+    // ) -> Result<ir::Function<ir::Constant>> {
+    //     self.optimize_function_inner(function)
+    // }
 
+    pub fn optimize_function_outer(
+        &self,
+        mut function: ir::Function<ir::Constant>,
+    ) -> Result<ir::Function<ir::Constant>> {
+        let mut i = 0;
         loop {
+            i = i + 1;
+            if i > 5 {
+                panic!("too many loops");
+            }
+
             // Perform inner optimizations
-            let function2 = self.optimize_function_inner(function)?;
+            function = self.optimize_function_inner(function)?;
 
             // Calculate jump tables
-            let (function2, strided_intervals) =
-                self.strided_intervals(&function2)?;
+            let strided_intervals = analysis::strided_intervals::strided_intervals(&function)?;
 
             let jump_tables = analysis::ksets::jump_table_analysis(
-                &function2,
+                &function,
                 &strided_intervals,
-                self.ti().backing()
+                self.ti().backing(),
             )?;
 
+            // filter jump tables down to only those with all valid targets
+            let jump_tables = jump_tables
+                .into_iter()
+                .filter(|jump_table| {
+                    jump_table
+                        .entries()
+                        .iter()
+                        .all(|entry| self.ti().prohibited_jump_table_area(entry.address()))
+                })
+                .collect::<Vec<JumpTable>>();
+
             // If we recovered any jump tables, we need to deal with those
-            if jump_tables.len() == 0  {
-                return Ok(function2);
-            }
-            else {
-                println!("jump_tables.len() = {}", jump_tables.len());
+            if jump_tables.len() == 0 {
+                return Ok(function);
             }
 
             // Create manual edges for the extended lifter
             let mut manual_edges = Vec::new();
             for jump_table in &jump_tables {
-                let rpl = jump_table.location().apply(&function2)?;
-                let branch_address =
-                    rpl.address()
-                        .ok_or("Failed to get address for location while \
-                               applying jump tables")?;
+                let rpl = jump_table.location().apply(&function)?;
+                let branch_address = rpl.address().ok_or(
+                    "Failed to get address for location while \
+                               applying jump tables",
+                )?;
 
                 for entry in jump_table.entries() {
-
-                    println!("branch_address: 0x{:x}", branch_address);
-                    println!("target_address: 0x{:x}", entry.address());
-                    println!("condition: {}", entry.condition());
-
-                    manual_edges.push((branch_address,
-                                       entry.address(),
-                                       Some(entry.condition().clone())));
+                    if let Some(permissions) = self.ti().backing().permissions(entry.address()) {
+                        if permissions.contains(MemoryPermissions::EXECUTE) {
+                            manual_edges.push((
+                                branch_address,
+                                entry.address(),
+                                Some(entry.condition().clone()),
+                            ));
+                        }
+                    }
                 }
             }
 
             // Lift a new function
-            let mut il_function: il::Function =
-                self.ti()
-                    .architecture()
-                    .translator()
-                    .translate_function_extended(
-                        self.ti().backing(),
-                        function2.address(),
-                        manual_edges)?;
+            let mut il_function: il::Function = self
+                .ti()
+                .architecture()
+                .translator()
+                .translate_function_extended(
+                    self.ti().backing(),
+                    function.address(),
+                    manual_edges,
+                )?;
 
             // Give it the same index as the original function
-            il_function.set_index(function2.index());
+            il_function.set_index(function.index());
 
-            function =
-                ir::Function::<ir::Constant>::from_il(&il_function)?;
+            function = ir::Function::<ir::Constant>::from_il(&il_function)?;
 
             // Strided intervals must be recomputed, ugh
-            let (mut function, strided_intervals) =
-                self.strided_intervals(&function)?;
+            let strided_intervals = analysis::strided_intervals::strided_intervals(&function)?;
 
             // Block/instruction indices may change.... so we'll rerun jump
             // table analysis, and that way we know we have valid values for
@@ -430,34 +403,27 @@ impl<'t> FunctionTranslator<'t> {
             let jump_tables = analysis::ksets::jump_table_analysis(
                 &function,
                 &strided_intervals,
-                self.ti().backing()
+                self.ti().backing(),
             )?;
-
-            println!("jump_tables len={}", jump_tables.len());
 
             // Find the branches that correspond to jump table entries
             for jump_table in &jump_tables {
-                let block_index =
-                    jump_table
-                        .location()
-                        .function_location()
-                        .block_index()
-                        .ok_or("Failed to get block index for jump table")?;
-                let instruction_index =
-                    jump_table
-                        .location()
-                        .function_location()
-                        .instruction_index()
-                        .ok_or("Failed to get instruction index for jump table")?;
+                let block_index = jump_table
+                    .location()
+                    .function_location()
+                    .block_index()
+                    .ok_or("Failed to get block index for jump table")?;
+                let instruction_index = jump_table
+                    .location()
+                    .function_location()
+                    .instruction_index()
+                    .ok_or("Failed to get instruction index for jump table")?;
 
-                let mut block = function.block_mut(block_index)?;
+                let block = function.block_mut(block_index)?;
                 block.replace_with_nop(instruction_index)?;
             }
-
-            function.set_index(function2.index());
         }
     }
-    */
 
     pub fn optimize_function(
         &self,

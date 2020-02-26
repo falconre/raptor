@@ -14,11 +14,11 @@ use std::collections::HashMap;
 pub fn transient_assignments<'f, V: ir::Value>(
     function: &'f ir::Function<V>,
 ) -> Result<HashMap<ir::ProgramLocation, TransientAssignments>> {
-    let tranisent_assignment_analysis = TransientAssignmentAnalysis {};
+    let transient_assignment_analysis = TransientAssignmentAnalysis {};
 
-    let result = fixed_point_forward(&tranisent_assignment_analysis, function)?;
+    let result = fixed_point_forward(&transient_assignment_analysis, function)?;
     Ok(incoming_results(
-        &tranisent_assignment_analysis,
+        &transient_assignment_analysis,
         function,
         result,
         || TransientAssignments::new(),

@@ -3,7 +3,7 @@
 use crate::error::*;
 use crate::ir;
 
-pub trait Module {
+pub trait Module: Sync {
     /// Apply modifications to functions before analysis takes place
     fn pre_analysis_function(&self, function: &mut ir::Function<ir::Constant>) -> Result<()>;
 }

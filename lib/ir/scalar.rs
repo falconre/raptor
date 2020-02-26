@@ -37,7 +37,7 @@ impl Scalar {
     pub fn ssa(&self) -> Option<usize> {
         self.ssa.clone()
     }
-    
+
     pub fn set_ssa(&mut self, ssa: Option<usize>) {
         self.ssa = ssa;
     }

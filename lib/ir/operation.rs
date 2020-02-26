@@ -105,6 +105,13 @@ impl<V: Value> Operation<V> {
         }
     }
 
+    pub fn index(&self) -> Option<&Expression<V>> {
+        match self {
+            Operation::Store { index, .. } | Operation::Load { index, .. } => Some(index),
+            _ => None,
+        }
+    }
+
     pub fn target(&self) -> Option<&Expression<V>> {
         match self {
             Operation::Branch { target } => Some(target),

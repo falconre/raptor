@@ -609,11 +609,25 @@ impl<'f> fixed_point::FixedPointAnalysis<'f, State, ir::Constant> for StackPoint
                         state.set_variable(dst.clone(), value);
                         state
                     }
+
                     ir::Operation::Branch { .. }
                     | ir::Operation::Call(_)
                     | ir::Operation::Intrinsic(_)
                     | ir::Operation::Return(_)
-                    | ir::Operation::Nop => state,
+                    | ir::Operation::Nop => {
+                        for variable_written in instruction
+                            .operation()
+                            .variables_written()
+                            .unwrap_or(Vec::new())
+                        {
+                            state.set_variable(
+                                variable_written.clone(),
+                                AnalysisValue::Top(variable_written.bits()),
+                            )
+                        }
+
+                        state
+                    }
                 }
             }
             _ => state,

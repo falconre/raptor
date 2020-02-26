@@ -156,7 +156,7 @@ fn expression_to_ast(context: &Context, expression: &ir::Expression<ir::Constant
                     v
                 }
             }
-            ir::RValue::Reference(_) => Err(ErrorKind::SolverReference)?,
+            ir::RValue::Reference(_) => Err(ErrorKind::SolverReference).unwrap(),
         },
         ir::Expression::LValue(lvalue) => match lvalue.as_ref() {
             ir::LValue::Variable(variable) => match variable {

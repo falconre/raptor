@@ -125,6 +125,10 @@ impl Expression<Constant> {
         self.all_values()
     }
 
+    pub fn is_constant(&self) -> bool {
+        self.constant().is_some()
+    }
+
     pub fn constant(&self) -> Option<&Constant> {
         self.rvalue().and_then(|rvalue| rvalue.value())
     }

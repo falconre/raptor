@@ -128,6 +128,7 @@ impl<'t> ProgramTranslator<'t> {
             self.calling_convention(),
             self.backing(),
             &self.symbols,
+            self.loader(),
         )
     }
 
