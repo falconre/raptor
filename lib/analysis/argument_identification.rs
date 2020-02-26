@@ -53,7 +53,6 @@ pub fn argument_identification(
                     .expect("Failed to get operation dst");
 
                 if *dst == arg {
-                    println!("  {}, {}", dst, location.instruction().unwrap());
                     found = true;
                     break;
                 }

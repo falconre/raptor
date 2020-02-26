@@ -22,8 +22,6 @@ impl MipsT9 {
             None => bail!("Could not find function entrypoint"),
         };
 
-        println!("Found entry index: 0x{:x}", entry_index);
-
         let function_address = function.address();
 
         // We need the block for this entry index

@@ -223,13 +223,6 @@ impl<'r> fixed_point::FixedPointAnalysis<'r, State, ir::Constant> for StridedInt
             ir::RefFunctionLocation::Instruction(_, instruction) => match instruction.operation() {
                 ir::Operation::Assign { dst, src } => {
                     let src = state.eval(&src.into())?;
-                    if instruction
-                        .address()
-                        .map(|a| a == 0x402680)
-                        .unwrap_or(false)
-                    {
-                        println!("{} {} = {}", instruction, dst, src);
-                    }
                     let src2 = if self.is_visited(&program_location) {
                         if let Some(original_src) = state.variable(dst) {
                             original_src.widen(&src)?

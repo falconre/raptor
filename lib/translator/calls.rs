@@ -369,16 +369,6 @@ pub fn set_function_parameters<V: ir::Value>(
     remaining_parameters.sort();
     final_parameters.append(&mut remaining_parameters);
 
-    println!(
-        "{} final_parameters: {}",
-        function.name(),
-        final_parameters
-            .iter()
-            .map(|p| format!("{}", p))
-            .collect::<Vec<String>>()
-            .join(", ")
-    );
-
     function.set_parameters(Some(final_parameters));
 
     Ok(())
