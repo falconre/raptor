@@ -269,7 +269,19 @@ impl<'t> FunctionTranslator<'t> {
 
         self.apply_modules(&mut function)?;
 
-        self.optimize_function(function)
+        self.optimize_function_inner(function)
+    }
+
+    pub fn translate_function_with_jump_tables(
+        &self,
+        function: &il::Function,
+    ) -> Result<ir::Function<ir::Constant>> {
+        let mut function =
+            ir::Function::<ir::Constant>::from_il(function).expect("Failed to translate function");
+
+        self.apply_modules(&mut function)?;
+
+        self.optimize_function_outer(function)
     }
 
     pub fn optimize_function_inner(
@@ -426,12 +438,5 @@ impl<'t> FunctionTranslator<'t> {
                 block.replace_with_nop(instruction_index)?;
             }
         }
-    }
-
-    pub fn optimize_function(
-        &self,
-        function: ir::Function<ir::Constant>,
-    ) -> Result<ir::Function<ir::Constant>> {
-        self.optimize_function_outer(function)
     }
 }
