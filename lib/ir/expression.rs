@@ -397,6 +397,10 @@ impl<V: Value> Expression<V> {
         self.lvalue().and_then(|lvalue| lvalue.variable())
     }
 
+    pub fn is_variable(&self) -> bool {
+        self.variable().is_some()
+    }
+
     pub fn stack_variable(&self) -> Option<&StackVariable> {
         self.lvalue().and_then(|lvalue| lvalue.stack_variable())
     }
@@ -531,6 +535,16 @@ impl<V: Value> Expression<V> {
             return Err(ErrorKind::Sort.into());
         }
         Ok(Expression::Cmpltu(Box::new(lhs), Box::new(rhs)))
+    }
+
+    pub fn cmpltue(lhs: Expression<V>, rhs: Expression<V>) -> Result<Expression<V>> {
+        if lhs.bits() != rhs.bits() {
+            return Err(ErrorKind::Sort.into());
+        }
+        Ok(Expression::or(
+            Expression::cmpeq(lhs.clone(), rhs.clone())?,
+            Expression::cmpltu(lhs, rhs)?,
+        )?)
     }
 
     pub fn trun(bits: usize, rhs: Expression<V>) -> Result<Expression<V>> {

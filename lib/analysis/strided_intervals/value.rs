@@ -3,7 +3,7 @@ use crate::ir;
 use std::cmp::Ordering;
 use std::fmt;
 
-#[derive(Clone, Debug, Eq, Ord, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum Value {
     Top(usize),
     Value(ir::Constant),
@@ -23,6 +23,74 @@ impl Value {
             Value::Value(c) => Some(c),
             _ => None,
         }
+    }
+
+    pub fn bits(&self) -> usize {
+        match self {
+            Value::Top(bits) => *bits,
+            Value::Value(constant) => constant.bits(),
+            Value::Bottom(bits) => *bits,
+        }
+    }
+
+    /// A partial comparison that is greater when the lhs value is less than the
+    /// rhs value. Used as the lo value in intervals
+    pub fn partial_cmp_lo(&self, other: &Value) -> Result<Option<Ordering>> {
+        Ok(match self {
+            Value::Top(_) => match other {
+                Value::Top(_) => Some(Ordering::Equal),
+                Value::Value(_) | Value::Bottom(_) => Some(Ordering::Greater),
+            },
+            Value::Value(lhs) => match other {
+                Value::Top(_) => Some(Ordering::Less),
+                Value::Value(rhs) => {
+                    if lhs == rhs {
+                        Some(Ordering::Equal)
+                    } else if lhs.cmpltu(rhs)?.is_one() {
+                        Some(Ordering::Greater)
+                    } else if rhs.cmpltu(lhs)?.is_one() {
+                        Some(Ordering::Less)
+                    } else {
+                        None
+                    }
+                }
+                Value::Bottom(_) => Some(Ordering::Greater),
+            },
+            Value::Bottom(_) => match other {
+                Value::Top(_) | Value::Value(_) => Some(Ordering::Less),
+                Value::Bottom(_) => Some(Ordering::Equal),
+            },
+        })
+    }
+
+    /// A partial comparison that is greater when the lhs value is greater than the
+    /// rhs value. Used as the hi value in intervals
+    pub fn partial_cmp_hi(&self, other: &Value) -> Result<Option<Ordering>> {
+        Ok(match self {
+            Value::Top(_) => match other {
+                Value::Top(_) => Some(Ordering::Equal),
+                Value::Value(_) | Value::Bottom(_) => Some(Ordering::Greater),
+            },
+            Value::Value(lhs) => match other {
+                Value::Top(_) => Some(Ordering::Less),
+                Value::Value(rhs) => {
+                    if lhs == rhs {
+                        Some(Ordering::Equal)
+                    } else if lhs.cmpltu(rhs)?.is_one() {
+                        Some(Ordering::Less)
+                    } else if rhs.cmpltu(lhs)?.is_one() {
+                        Some(Ordering::Greater)
+                    } else {
+                        None
+                    }
+                }
+                Value::Bottom(_) => Some(Ordering::Greater),
+            },
+            Value::Bottom(_) => match other {
+                Value::Top(_) | Value::Value(_) => Some(Ordering::Less),
+                Value::Bottom(_) => Some(Ordering::Equal),
+            },
+        })
     }
 
     pub(crate) fn max_(&self, other: &Value) -> Result<Value> {
@@ -126,14 +194,6 @@ impl Value {
         }
     }
 
-    pub fn bits(&self) -> usize {
-        match self {
-            Value::Top(bits) => *bits,
-            Value::Value(constant) => constant.bits(),
-            Value::Bottom(bits) => *bits,
-        }
-    }
-
     pub fn binop<F>(&self, rhs: &Value, f: F) -> Result<Value>
     where
         F: Fn(&ir::Constant, &ir::Constant) -> Result<ir::Constant>,
@@ -161,6 +221,7 @@ impl Value {
     }
 }
 
+/*
 impl PartialOrd for Value {
     fn partial_cmp(&self, other: &Value) -> Option<Ordering> {
         match self {
@@ -186,6 +247,7 @@ impl PartialOrd for Value {
         }
     }
 }
+*/
 
 impl fmt::Display for Value {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

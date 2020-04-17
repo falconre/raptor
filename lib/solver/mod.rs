@@ -7,6 +7,10 @@ use crate::error::*;
 use crate::ir;
 use falcon_z3::{Ast, Check, Config, Context, Model, Optimize, Solver};
 
+mod fast;
+
+pub use fast::FastSolver;
+
 fn return_solver_result(
     solver: &Solver,
     context: &Context,
@@ -156,7 +160,7 @@ fn expression_to_ast(context: &Context, expression: &ir::Expression<ir::Constant
                     v
                 }
             }
-            ir::RValue::Reference(_) => Err(ErrorKind::SolverReference).unwrap(),
+            ir::RValue::Reference(_) => return Err(ErrorKind::SolverReference.into()),
         },
         ir::Expression::LValue(lvalue) => match lvalue.as_ref() {
             ir::LValue::Variable(variable) => match variable {

@@ -4,6 +4,8 @@ pub mod constants;
 pub mod detect_call_information;
 pub mod fixed_point;
 pub mod ksets;
+pub mod lattice;
+pub mod stack_buffers;
 pub mod stack_pointer_offsets;
 pub mod strided_intervals;
 pub mod transient_assignments;

@@ -202,16 +202,14 @@ pub fn eval(expr: &Expression<Constant>) -> Result<Constant> {
     })
 }
 
-fn reduce_binop<F, G, H>(
+fn reduce_binop<F, H>(
     lhs: Expression<Constant>,
     rhs: Expression<Constant>,
     expression_op: F,
-    constant_op: G,
     isize_op: H,
 ) -> Result<Expression<Constant>>
 where
     F: Fn(Expression<Constant>, Expression<Constant>) -> Result<Expression<Constant>>,
-    G: Fn(&Constant, &Constant) -> Result<Constant>,
     H: Fn(isize, isize) -> isize,
 {
     if let Some(l) = lhs.stack_pointer() {
@@ -227,27 +225,38 @@ where
         }
     }
 
-    if let Some(l) = lhs.constant() {
-        if let Some(r) = rhs.stack_pointer() {
-            let l_i64 = l
-                .value_i64()
-                .expect("Failed to get constant as i64 while reducing expression");
-            return Ok(Reference::new(
-                StackVariable::new(isize_op(r.offset(), l_i64 as isize), r.bits()).into(),
-                rhs.bits(),
-            )
-            .into());
-        }
-        if let Some(r) = rhs.constant() {
-            return Ok(constant_op(l, r)?.into());
-        }
-    }
-
     expression_op(lhs, rhs)
 }
 
 pub fn reduce(expr: &Expression<Constant>) -> Result<Expression<Constant>> {
-    let expr_out = match expr {
+    // Move constant to the right
+    let expr = match expr {
+        Expression::Add(lhs, rhs)
+        | Expression::Mul(lhs, rhs)
+        | Expression::And(lhs, rhs)
+        | Expression::Or(lhs, rhs)
+        | Expression::Xor(lhs, rhs)
+        | Expression::Cmpeq(lhs, rhs) => {
+            if lhs.is_constant() && !rhs.is_constant() {
+                let ll = rhs.as_ref().clone();
+                let rr = lhs.as_ref().clone();
+                match expr {
+                    Expression::Add(_, _) => Expression::add(ll, rr)?,
+                    Expression::Mul(_, _) => Expression::mul(ll, rr)?,
+                    Expression::And(_, _) => Expression::and(ll, rr)?,
+                    Expression::Or(_, _) => Expression::or(ll, rr)?,
+                    Expression::Xor(_, _) => Expression::xor(ll, rr)?,
+                    Expression::Cmpeq(_, _) => Expression::cmpeq(ll, rr)?,
+                    _ => unreachable!(),
+                }
+            } else {
+                expr.clone()
+            }
+        }
+        _ => expr.clone(),
+    };
+
+    let expr_out = match &expr {
         Expression::LValue(lvalue) => match lvalue.as_ref() {
             LValue::Variable(_) => expr.clone(),
             LValue::Dereference(dereference) => dereference_expr(reduce(dereference.expression())?),
@@ -258,35 +267,29 @@ pub fn reduce(expr: &Expression<Constant>) -> Result<Expression<Constant>> {
                 reference_expr(reduce(reference.expression())?, reference.bits())
             }
         },
-        Expression::Add(lhs, rhs) => reduce_binop(
-            reduce(lhs)?,
-            reduce(rhs)?,
-            Expression::add,
-            |lhs, rhs| Ok(lhs.add(rhs)?),
-            |lhs, rhs| lhs + rhs,
-        )?,
-        Expression::Sub(lhs, rhs) => reduce_binop(
-            reduce(lhs)?,
-            reduce(rhs)?,
-            Expression::sub,
-            |lhs, rhs| Ok(lhs.sub(rhs)?),
-            |lhs, rhs| lhs - rhs,
-        )?,
-        Expression::And(lhs, rhs) => reduce_binop(
-            reduce(lhs)?,
-            reduce(rhs)?,
-            Expression::and,
-            |lhs, rhs| Ok(lhs.and(rhs)?),
-            |lhs, rhs| lhs & rhs,
-        )?,
+        Expression::Add(lhs, rhs) => {
+            reduce_binop(reduce(&lhs)?, reduce(&rhs)?, Expression::add, |lhs, rhs| {
+                lhs + rhs
+            })?
+        }
+        Expression::Sub(lhs, rhs) => {
+            reduce_binop(reduce(&lhs)?, reduce(&rhs)?, Expression::sub, |lhs, rhs| {
+                lhs - rhs
+            })?
+        }
+        Expression::And(lhs, rhs) => {
+            reduce_binop(reduce(&lhs)?, reduce(&rhs)?, Expression::and, |lhs, rhs| {
+                lhs & rhs
+            })?
+        }
         _ => expr.clone(),
     };
 
-    if expr_out == *expr {
-        if let Some(expr) = simplify(expr)? {
+    if expr_out == expr {
+        if let Some(expr) = simplify(&expr)? {
             reduce(&expr)
         } else if expr.all_constants() {
-            Ok(eval(expr)?.into())
+            Ok(eval(&expr)?.into())
         } else {
             Ok(expr_out)
         }
@@ -336,31 +339,108 @@ pub fn simplify(expr: &Expression<Constant>) -> Result<Option<Expression<Constan
                                     Reference::new(
                                         StackVariable::new(
                                             stack_variable.offset() - rci64 as isize,
-                                            stack_variable.bits()
-                                        ).into(),
-                                        bits
-                                    ).into(),
-                                    rr.as_ref().clone().into()
+                                            stack_variable.bits(),
+                                        )
+                                        .into(),
+                                        bits,
+                                    )
+                                    .into(),
+                                    rr.as_ref().clone().into(),
                                 )?));
                             }
                         }
                     }
                     _ => {}
                 }
+                if rhs_constant.is_zero() {
+                    return Ok(Some(lhs.as_ref().clone().into()));
+                }
             }
         }
         Expression::Mul(lhs, rhs) => {
-            if lhs.constant().map(|constant| constant.is_one()).unwrap_or(false) {
+            if lhs
+                .constant()
+                .map(|constant| constant.is_one())
+                .unwrap_or(false)
+            {
                 return Ok(Some(rhs.as_ref().clone()));
             }
-            if lhs.constant().map(|constant| constant.is_zero()).unwrap_or(false) {
+            if lhs
+                .constant()
+                .map(|constant| constant.is_zero())
+                .unwrap_or(false)
+            {
                 return Ok(Some(Constant::new(0, lhs.bits()).into()));
             }
-            if rhs.constant().map(|constant| constant.is_one()).unwrap_or(false) {
+            if rhs
+                .constant()
+                .map(|constant| constant.is_one())
+                .unwrap_or(false)
+            {
                 return Ok(Some(lhs.as_ref().clone()));
             }
-            if rhs.constant().map(|constant| constant.is_zero()).unwrap_or(false) {
+            if rhs
+                .constant()
+                .map(|constant| constant.is_zero())
+                .unwrap_or(false)
+            {
                 return Ok(Some(Constant::new(0, rhs.bits()).into()));
+            }
+        }
+        Expression::Cmpeq(lhs, rhs) => {
+            // We will always have the constant value on the rhs
+            let (lhs, rhs) = if lhs.is_constant() && !rhs.is_constant() {
+                (rhs, lhs)
+            } else {
+                (lhs, rhs)
+            };
+
+            if let Some(rhs_constant) = rhs.constant() {
+                if rhs_constant.is_one() && rhs_constant.bits() == 1 {
+                    return Ok(Some(lhs.as_ref().clone()));
+                }
+                match lhs.as_ref() {
+                    Expression::Sub(ll, lr) => {
+                        if let Some(constant) = lr.constant() {
+                            return Ok(Some(Expression::cmpeq(
+                                ll.as_ref().clone(),
+                                rhs_constant.add(constant)?.into(),
+                            )?));
+                        }
+                    }
+                    _ => {}
+                }
+            }
+
+            if rhs
+                .constant()
+                .map(|constant| constant.is_zero() && constant.bits() == 1)
+                .unwrap_or(false)
+            {
+                match lhs.as_ref() {
+                    Expression::Cmpeq(ll, lr) => {
+                        if lr
+                            .constant()
+                            .map(|constant| constant.is_zero() && constant.bits() == 1)
+                            .unwrap_or(false)
+                        {
+                            return Ok(Some(Expression::cmpeq(
+                                ll.as_ref().clone(),
+                                Constant::new(1, 1).into(),
+                            )?));
+                        } else if lr
+                            .constant()
+                            .map(|constant| constant.is_one())
+                            .unwrap_or(false)
+                        {
+                            return Ok(Some(Expression::cmpeq(
+                                ll.as_ref().clone(),
+                                Constant::new(0, 1).into(),
+                            )?));
+                        }
+                    }
+                    _ => {}
+                }
             }
         }
         _ => {}

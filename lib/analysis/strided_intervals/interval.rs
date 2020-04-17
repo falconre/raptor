@@ -12,7 +12,10 @@ pub struct Interval {
 
 impl Interval {
     pub fn new(lo: Value, hi: Value) -> Interval {
-        Interval { lo: lo, hi: hi }
+        Interval {
+            lo: lo.clone(),
+            hi: hi.clone(),
+        }
     }
 
     pub fn new_top(bits: usize) -> Interval {
@@ -47,31 +50,14 @@ impl Interval {
     }
 
     pub fn widen(&self, other: &Interval) -> Result<Interval> {
-        // If lo is less than or equal to rhs lo, then keep lo
-        let lo_cmp = self.lo().binop(other.lo(), |l, r| {
-            let exp = ir::Expression::or(l.cmpeq(r)?.into(), l.cmpltu(r)?.into())?;
-            Ok(ir::eval(&exp)?)
-        })?;
-
-        let lo = if lo_cmp.value().map(|value| value.is_one()).unwrap_or(false) {
-            self.lo().clone()
-        } else {
-            Value::Top(self.bits())
-        };
-
-        // if hi greater than other hi, then keep hi
-        let hi_cmp = self.hi().binop(other.hi(), |l, r| {
-            let exp = ir::Expression::xor(l.cmpltu(r)?.into(), ir::expr_const(1, 1))?;
-            Ok(ir::eval(&exp)?)
-        })?;
-
-        let hi = if hi_cmp.value().map(|value| value.is_one()).unwrap_or(false) {
-            self.hi().clone()
-        } else {
-            Value::Top(self.bits())
-        };
-
-        Ok(Interval::new(lo, hi))
+        let mut result = self.clone();
+        if other.lo.partial_cmp_lo(self.lo())?.unwrap() == Ordering::Greater {
+            result.lo = Value::Top(self.lo().bits());
+        }
+        if other.hi.partial_cmp_hi(self.hi())?.unwrap() == Ordering::Greater {
+            result.hi = Value::Top(self.hi().bits());
+        }
+        Ok(result)
     }
 
     pub fn narrow(&self, other: &Interval) -> Result<Interval> {
@@ -224,19 +210,19 @@ impl Interval {
     }
 
     pub fn trun(&self, bits: usize) -> Result<Interval> {
-        Ok(Interval {
-            lo: self
-                .lo()
-                .extop(bits, |c: &ir::Constant| Ok(c.trun(bits)?))?,
-            hi: self.hi().extop(bits, |c| Ok(c.trun(bits)?))?,
-        })
+        let mut result = self.clone();
+        result.lo = self
+            .lo()
+            .extop(bits, |c: &ir::Constant| Ok(c.trun(bits)?))?;
+        result.hi = self.hi().extop(bits, |c| Ok(c.trun(bits)?))?;
+        Ok(result)
     }
 
     pub fn zext(&self, bits: usize) -> Result<Interval> {
-        Ok(Interval {
-            lo: self.lo().extop(bits, |c| Ok(c.zext(bits)?))?,
-            hi: self.hi().extop(bits, |c| Ok(c.zext(bits)?))?,
-        })
+        let mut result = self.clone();
+        result.lo = self.lo().extop(bits, |c| Ok(c.zext(bits)?))?;
+        result.hi = self.hi().extop(bits, |c| Ok(c.zext(bits)?))?;
+        Ok(result)
     }
 
     pub fn sext(&self, bits: usize) -> Result<Interval> {
@@ -250,7 +236,10 @@ impl Interval {
             hi = Value::Top(hi.bits());
         }
 
-        Ok(Interval { lo: lo, hi: hi })
+        let mut result = self.clone();
+        result.lo = lo;
+        result.hi = hi;
+        Ok(result)
     }
 }
 
@@ -262,19 +251,20 @@ impl fmt::Display for Interval {
 
 impl PartialOrd for Interval {
     fn partial_cmp(&self, other: &Interval) -> Option<Ordering> {
-        if self.lo() < other.lo() {
-            if self.hi() >= other.hi() {
-                return Some(Ordering::Greater);
-            }
+        match self.lo().partial_cmp_lo(other.lo()).ok()?? {
+            Ordering::Less => match self.hi().partial_cmp_hi(other.hi()).ok()?? {
+                Ordering::Less | Ordering::Equal => Some(Ordering::Less),
+                Ordering::Greater => None,
+            },
+            Ordering::Equal => match self.hi().partial_cmp_hi(other.hi()).ok()?? {
+                Ordering::Less => Some(Ordering::Less),
+                Ordering::Equal => None,
+                Ordering::Greater => Some(Ordering::Greater),
+            },
+            Ordering::Greater => match self.hi().partial_cmp_hi(other.hi()).ok()?? {
+                Ordering::Less => None,
+                Ordering::Equal | Ordering::Greater => Some(Ordering::Greater),
+            },
         }
-        if self.hi() > other.hi() {
-            if self.lo() <= other.lo() {
-                return Some(Ordering::Less);
-            }
-        }
-        if self.lo() == other.lo() && self.hi() == other.hi() {
-            return Some(Ordering::Equal);
-        }
-        None
     }
 }

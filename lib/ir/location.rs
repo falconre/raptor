@@ -68,7 +68,9 @@ impl<'r, V: Value> RefFunctionLocation<'r, V> {
 impl<'r, V: Value> fmt::Display for RefFunctionLocation<'r, V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            RefFunctionLocation::Instruction(_, instruction) => instruction.fmt(f),
+            RefFunctionLocation::Instruction(block, instruction) => {
+                write!(f, "{:02x} {}", block.index(), instruction)
+            }
             RefFunctionLocation::Edge(edge) => edge.fmt(f),
             RefFunctionLocation::EmptyBlock(block) => write!(f, "[ block 0x{:x} ]", block.index()),
         }
@@ -393,15 +395,17 @@ impl fmt::Display for FunctionLocation {
         match self {
             FunctionLocation::Instruction(block_index, instruction_index) => write!(
                 f,
-                "FunctionLocation::Instruction({}, {})",
+                "FunctionLocation::Instruction(0x{:x}, 0x{:x})",
                 block_index, instruction_index
             ),
             FunctionLocation::EmptyBlock(block_index) => {
-                write!(f, "FunctionLocation::EmptyBlock({})", block_index)
+                write!(f, "FunctionLocation::EmptyBlock(0x{:x})", block_index)
             }
-            FunctionLocation::Edge(head_index, tail_index) => {
-                write!(f, "FunctionLocation::Edge({}, {})", head_index, tail_index)
-            }
+            FunctionLocation::Edge(head_index, tail_index) => write!(
+                f,
+                "FunctionLocation::Edge(0x{:x}, 0x{:x})",
+                head_index, tail_index
+            ),
         }
     }
 }

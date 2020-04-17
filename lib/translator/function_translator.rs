@@ -295,8 +295,9 @@ impl<'t> FunctionTranslator<'t> {
 
             calls::no_returns(&mut function_2)?;
 
+            // Both of these are currently not working
             // calls::set_function_parameters(&mut function_2, self.ti())?;
-            let function_2 = self.remove_outgoing_transient_assignments(&function_2)?;
+            // let function_2 = self.remove_outgoing_transient_assignments(&function_2)?;
 
             if function == function_2 {
                 break;
@@ -321,10 +322,12 @@ impl<'t> FunctionTranslator<'t> {
         &self,
         mut function: ir::Function<ir::Constant>,
     ) -> Result<ir::Function<ir::Constant>> {
+        return self.optimize_function_inner(function);
+
         let mut i = 0;
         loop {
             i = i + 1;
-            if i > 5 {
+            if i > 50 {
                 panic!("too many loops");
             }
 

@@ -3,9 +3,8 @@ use crate::analysis::{fixed_point, use_def, LocationSet};
 use crate::error::*;
 use crate::ir;
 use crate::solver;
-use std::cell::RefCell;
 use std::cmp::{Ordering, PartialOrd};
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet, VecDeque};
 
 mod interval;
 mod strided_interval;
@@ -32,12 +31,14 @@ pub fn strided_intervals<'f>(
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct State {
     variables: HashMap<ir::Variable, StridedInterval>,
+    variables_widen: HashMap<ir::Variable, StridedInterval>,
 }
 
 impl State {
     pub fn new() -> State {
         State {
             variables: HashMap::new(),
+            variables_widen: HashMap::new(),
         }
     }
 
@@ -50,6 +51,12 @@ impl State {
     }
 
     pub fn set(&mut self, variable: ir::Variable, strided_interval: StridedInterval) {
+        if let Some(previous_si) = self.variables.get(&variable) {
+            if *previous_si != strided_interval {
+                self.variables_widen
+                    .insert(variable.clone(), previous_si.clone());
+            }
+        }
         self.variables.insert(variable, strided_interval);
     }
 
@@ -90,10 +97,36 @@ impl State {
     }
 
     pub fn join(mut self, other: &State) -> Result<State> {
-        for (variable, si) in other.variables() {
-            let si = match self.variables.get(variable) {
-                Some(si2) => si.join(si2)?,
+        for (variable, si) in &other.variables_widen {
+            let si = match self.variables_widen.get(variable) {
+                Some(other_si) => si.join(other_si)?,
                 None => si.clone(),
+            };
+            self.variables_widen.insert(variable.clone(), si);
+        }
+
+        for (variable, other_si) in other.variables() {
+            let si = match self.variables.get(variable) {
+                Some(self_si) => {
+                    let mut joined = self_si.join(other_si)?;
+
+                    // Do we need to widen?
+                    if joined > *self_si {
+                        if self
+                            .variables_widen
+                            .get(variable)
+                            .map(|widen_si| joined > *widen_si)
+                            .unwrap_or(false)
+                        {
+                            joined = self_si.widen(&joined)?;
+                        }
+                        self.variables_widen
+                            .insert(variable.clone(), joined.clone());
+                    }
+
+                    joined
+                }
+                None => other_si.clone(),
             };
             self.variables.insert(variable.clone(), si);
         }
@@ -102,6 +135,9 @@ impl State {
 
     pub fn top(&mut self) {
         self.variables
+            .iter_mut()
+            .for_each(|(_, si)| *si = StridedInterval::new_top(si.bits()));
+        self.variables_widen
             .iter_mut()
             .for_each(|(_, si)| *si = StridedInterval::new_top(si.bits()));
     }
@@ -151,58 +187,163 @@ impl PartialOrd for State {
 }
 
 struct StridedIntervalAnalysis {
-    visited: RefCell<HashSet<ir::ProgramLocation>>,
     use_def: HashMap<ir::ProgramLocation, LocationSet>,
-    used_variables: HashMap<ir::ProgramLocation, HashSet<ir::Variable>>,
 }
 
 impl StridedIntervalAnalysis {
     fn new(function: &ir::Function<ir::Constant>) -> Result<StridedIntervalAnalysis> {
-        let mut used_variables: HashMap<ir::ProgramLocation, HashSet<ir::Variable>> =
-            HashMap::new();
-
         let use_def = use_def(function)?;
 
-        for (pl, location_set) in use_def.iter() {
-            for location in location_set.locations() {
-                let rpl = location.apply(function)?;
-                let hash_set = used_variables.entry(pl.clone()).or_insert(HashSet::new());
-
-                let variables_read = rpl
-                    .instruction()
-                    .and_then(|instruction| instruction.variables_read());
-                if let Some(variables_read) = variables_read {
-                    for variable in variables_read {
-                        hash_set.insert(variable.clone());
-                    }
-                }
-            }
-        }
-
-        Ok(StridedIntervalAnalysis {
-            visited: RefCell::new(HashSet::new()),
-            use_def: use_def,
-            used_variables: used_variables,
-        })
-    }
-
-    fn is_visited(&self, location: &ir::ProgramLocation) -> bool {
-        self.visited.borrow().contains(location)
-    }
-
-    fn visit(&self, location: ir::ProgramLocation) {
-        self.visited.borrow_mut().insert(location);
+        Ok(StridedIntervalAnalysis { use_def: use_def })
     }
 
     fn use_def(&self, program_location: &ir::ProgramLocation) -> &LocationSet {
         &self.use_def[program_location]
     }
 
-    fn used_variables(
+    /// Takes a RefProgramLocation which points at an edge. Returns all the
+    /// variables in the predecessor block which are possibly influenced by the
+    /// condition, recursively
+    fn block_guarded_variables(
         &self,
-        program_location: &ir::ProgramLocation,
-    ) -> Option<&HashSet<ir::Variable>> {
-        self.used_variables.get(program_location)
+        ref_program_location: &ir::RefProgramLocation<ir::Constant>,
+    ) -> Result<HashSet<ir::Variable>> {
+        // The block to search within
+        let block_index = ref_program_location.edge().unwrap().head();
+
+        let mut variables: HashSet<ir::Variable> = HashSet::new();
+
+        // locations we've already looked at
+        let mut locations_considered: HashSet<ir::ProgramLocation> = HashSet::new();
+
+        // queue of locations we still need to look at
+        let mut queue: VecDeque<ir::ProgramLocation> = VecDeque::new();
+
+        for program_location in self
+            .use_def(&ref_program_location.clone().into())
+            .locations()
+        {
+            queue.push_back(program_location.clone());
+        }
+
+        while !queue.is_empty() {
+            let pl = queue.pop_front().unwrap();
+            locations_considered.insert(pl.clone().into());
+
+            let rpl = pl.apply(ref_program_location.function())?;
+
+            if rpl
+                .block()
+                .map(|block| block.index() != block_index)
+                .unwrap_or(true)
+            {
+                continue;
+            }
+
+            let instruction = match rpl.instruction() {
+                Some(instruction) => instruction,
+                None => continue,
+            };
+
+            match instruction.operation() {
+                ir::Operation::Assign { dst, src } => {
+                    variables.insert(dst.clone());
+                    for variable in src.variables() {
+                        variables.insert(variable.clone());
+                    }
+                    for location in self.use_def(&pl).locations() {
+                        if !locations_considered.contains(location) {
+                            queue.push_back(location.clone());
+                        }
+                    }
+                }
+                ir::Operation::Load { dst, .. } => {
+                    variables.insert(dst.clone());
+                }
+                ir::Operation::Store { .. }
+                | ir::Operation::Branch { .. }
+                | ir::Operation::Call(_)
+                | ir::Operation::Intrinsic(_)
+                | ir::Operation::Return(_)
+                | ir::Operation::Nop => {}
+            }
+        }
+
+        Ok(variables)
+    }
+
+    /// Given a program location, and the current state, create a set of
+    /// constraints which capture information about variables which reach this
+    /// point in the program.
+    fn build_constraints(
+        &self,
+        ref_program_location: &ir::RefProgramLocation<ir::Constant>,
+    ) -> Result<Vec<ir::Expression<ir::Constant>>> {
+        let mut constraints = Vec::new();
+
+        // The block to search within
+        let block_index = ref_program_location.edge().unwrap().head();
+
+        // locations we've already looked at
+        let mut locations_considered: HashSet<ir::ProgramLocation> = HashSet::new();
+
+        // We can only consider the most recent assignment to a variable
+        let mut already_assigned: HashSet<ir::Variable> = HashSet::new();
+
+        // queue of locations we still need to look at
+        let mut queue: VecDeque<ir::ProgramLocation> = VecDeque::new();
+
+        for program_location in self
+            .use_def(&ref_program_location.clone().into())
+            .locations()
+        {
+            queue.push_back(program_location.clone());
+        }
+
+        while !queue.is_empty() {
+            let pl = queue.pop_front().unwrap();
+            locations_considered.insert(pl.clone().into());
+
+            let rpl = pl.apply(ref_program_location.function())?;
+
+            if rpl
+                .block()
+                .map(|block| block.index() != block_index)
+                .unwrap_or(true)
+            {
+                continue;
+            }
+
+            let operation = match rpl.instruction() {
+                Some(instruction) => instruction.operation(),
+                None => continue,
+            };
+
+            if !operation.is_assign() {
+                continue;
+            }
+            let dst = operation.dst().unwrap();
+            let src = operation.src().unwrap();
+
+            if already_assigned.contains(dst) {
+                continue;
+            }
+            already_assigned.insert(dst.clone());
+
+            let constraint = ir::Expression::cmpeq(dst.clone().into(), src.clone())?;
+            if constraint.contains_reference() {
+                continue;
+            }
+            constraints.push(ir::reduce(&constraint)?);
+
+            for location in self.use_def(&pl).locations() {
+                if !locations_considered.contains(location) {
+                    queue.push_back(location.clone());
+                }
+            }
+        }
+
+        Ok(constraints)
     }
 }
 
@@ -217,22 +358,11 @@ impl<'r> fixed_point::FixedPointAnalysis<'r, State, ir::Constant> for StridedInt
             None => State::new(),
         };
 
-        let program_location: ir::ProgramLocation = location.clone().into();
-
         let state = match location.function_location() {
             ir::RefFunctionLocation::Instruction(_, instruction) => match instruction.operation() {
                 ir::Operation::Assign { dst, src } => {
                     let src = state.eval(&src.into())?;
-                    let src2 = if self.is_visited(&program_location) {
-                        if let Some(original_src) = state.variable(dst) {
-                            original_src.widen(&src)?
-                        } else {
-                            src
-                        }
-                    } else {
-                        src
-                    };
-                    state.set(dst.clone(), src2);
+                    state.set(dst.clone(), src);
                     state
                 }
                 ir::Operation::Load { dst, .. } => {
@@ -275,78 +405,54 @@ impl<'r> fixed_point::FixedPointAnalysis<'r, State, ir::Constant> for StridedInt
             },
             ir::RefFunctionLocation::Edge(edge) => {
                 if let Some(condition) = edge.condition() {
-                    let mut constraints = vec![condition.clone()];
+                    let mut fast_solver = solver::FastSolver::new();
+                    fast_solver.add_constraint(ir::reduce(condition)?);
+                    fast_solver.append_constraints(self.build_constraints(location)?);
+                    fast_solver.run()?;
 
-                    // Used the solver to constrain variables used in this
-                    // expression. This works well for conditional flags.
-                    for pl in self.use_def(&program_location).locations() {
-                        let rpl = pl.apply(location.function())?;
+                    // for constraint in fast_solver.constraints() {
+                    //     println!(
+                    //         "constraint: {} - {}",
+                    //         constraint,
+                    //         ir::reduce(&fast_solver.eval(constraint.clone())?)?
+                    //     );
+                    // }
 
-                        if let Some(instruction) = rpl.instruction() {
-                            let operation = instruction.operation();
-                            if !operation.is_assign() {
-                                continue;
-                            }
-                            let dst = operation.dst().unwrap();
-                            let src = operation.src().unwrap();
-                            let constraint =
-                                ir::Expression::cmpeq(dst.clone().into(), src.clone())?;
-                            constraints.push(constraint);
-                        }
-                    }
-
-                    if let Some(used_variables) = self.used_variables(&program_location) {
-                        for variable in used_variables {
-                            let variable_expression: ir::Expression<ir::Constant> =
-                                variable.clone().into();
-                            let lo = solver::minimize(&constraints, &variable_expression)?;
-                            let hi = solver::maximize(&constraints, &variable_expression)?;
-
-                            let lo: Value = match lo {
-                                Some(constant) => Value::Value(constant),
-                                None => Value::Top(variable.bits()),
-                            };
-
-                            let hi: Value = match hi {
-                                Some(constant) => Value::Value(constant),
-                                None => Value::Top(variable.bits()),
-                            };
-
-                            let narrow_interval = Interval::new(lo, hi);
-                            let narrow_strided_interval = StridedInterval::new(narrow_interval, 0);
-
-                            let strided_interval = match state.variable(variable) {
-                                Some(si) => si.narrow(&narrow_strided_interval)?,
-                                None => narrow_strided_interval,
-                            };
-
+                    for variable in self.block_guarded_variables(&location)? {
+                        if let Some(constant) = fast_solver.variable(&variable) {
+                            let strided_interval = StridedInterval::new(
+                                Interval::new(
+                                    Value::Value(constant.clone()),
+                                    Value::Value(constant.clone()),
+                                ),
+                                1,
+                            );
                             state.set(variable.clone(), strided_interval);
+                            continue;
                         }
-                    } else {
-                        for variable in condition.variables() {
-                            state.set(variable.clone(), StridedInterval::new_top(variable.bits()));
-                        }
-                    }
 
-                    let constraints = vec![condition.clone()];
+                        let variable_expression: ir::Expression<ir::Constant> =
+                            variable.clone().into();
 
-                    // Now constrain the variables in the expression
-                    for variable in condition.variables() {
-                        let lo = solver::minimize(&constraints, &variable.clone().into())?;
-                        let hi = solver::maximize(&constraints, &variable.clone().into())?;
+                        let lo =
+                            solver::minimize(&fast_solver.constraints(), &variable_expression)?;
+                        let hi =
+                            solver::maximize(&fast_solver.constraints(), &variable_expression)?;
 
-                        let lo: Value = lo
-                            .map(|v| Value::Value(v))
-                            .unwrap_or(Value::Top(variable.bits()));
+                        let lo: Value = match lo {
+                            Some(constant) => Value::Value(constant),
+                            None => Value::Top(variable.bits()),
+                        };
 
-                        let hi: Value = hi
-                            .map(|v| Value::Value(v))
-                            .unwrap_or(Value::Top(variable.bits()));
+                        let hi: Value = match hi {
+                            Some(constant) => Value::Value(constant),
+                            None => Value::Top(variable.bits()),
+                        };
 
                         let narrow_interval = Interval::new(lo, hi);
                         let narrow_strided_interval = StridedInterval::new(narrow_interval, 0);
 
-                        let strided_interval = match state.variable(variable) {
+                        let strided_interval = match state.variable(&variable) {
                             Some(si) => si.narrow(&narrow_strided_interval)?,
                             None => narrow_strided_interval,
                         };
@@ -358,8 +464,6 @@ impl<'r> fixed_point::FixedPointAnalysis<'r, State, ir::Constant> for StridedInt
             }
             ir::RefFunctionLocation::EmptyBlock(_) => state,
         };
-
-        self.visit(program_location);
 
         Ok(state)
     }

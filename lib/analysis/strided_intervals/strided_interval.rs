@@ -89,7 +89,7 @@ impl StridedInterval {
     pub fn widen(&self, other: &StridedInterval) -> Result<StridedInterval> {
         Ok(StridedInterval::new(
             self.interval().widen(other.interval())?,
-            si_gcd(self.stride(), other.stride()),
+            self.stride().clone(),
         ))
     }
 

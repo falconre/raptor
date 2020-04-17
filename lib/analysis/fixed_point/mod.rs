@@ -111,24 +111,13 @@ where
                         None => s,
                     });
 
-            // Compute the transform over this location.
             let state = analysis.trans(&rpl, state)?;
-
-            use std::cmp::Ordering;
-            let state_is_less = states
-                .get(&location)
-                .map(|state| match state.partial_cmp(state) {
-                    Some(ordering) => ordering == Ordering::Less,
-                    None => true,
-                })
-                .unwrap_or(false);
-
-            if state_is_less {
-                panic!("State is less!");
-            }
 
             // If nothing changes, go to the next item in the queue.
             if let Some(in_state) = states.get(&location) {
+                if state.partial_cmp(in_state).unwrap() == std::cmp::Ordering::Less {
+                    panic!("State is less");
+                }
                 if state == *in_state {
                     break;
                 }

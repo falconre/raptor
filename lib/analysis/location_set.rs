@@ -3,7 +3,7 @@ use crate::ir;
 use std::cmp::{Ordering, PartialOrd};
 use std::collections::HashSet;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LocationSet {
     locations: HashSet<ir::ProgramLocation>,
 }
@@ -57,29 +57,15 @@ impl LocationSet {
 
 impl PartialOrd for LocationSet {
     fn partial_cmp(&self, rhs: &LocationSet) -> Option<Ordering> {
-        let mut order = self
-            .locations
-            .iter()
-            .fold(Ordering::Equal, |order, location| {
-                if order == Ordering::Greater {
-                    Ordering::Greater
-                } else if !rhs.contains(location) {
-                    Ordering::Greater
-                } else {
-                    Ordering::Equal
-                }
-            });
-
-        for location in rhs.locations() {
-            if !self.contains(location) {
-                if order == Ordering::Greater {
-                    return None;
-                } else {
-                    order = Ordering::Less;
-                }
-            }
+        if self == rhs {
+            Some(Ordering::Equal)
+        } else if self.locations.is_subset(&rhs.locations) {
+            Some(Ordering::Less)
+        } else if self.locations.is_superset(&rhs.locations) {
+            Some(Ordering::Greater)
+        } else {
+            None
         }
-        Some(order)
     }
 }
 

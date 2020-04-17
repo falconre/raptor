@@ -492,7 +492,7 @@ impl PartialOrd for State {
             match self.variables.get(variable) {
                 Some(lhs) => match lhs.partial_cmp(&analysis_value) {
                     Some(o) => {
-                        if o == ordering {
+                        if o == ordering || o == Ordering::Equal {
                             continue;
                         } else if o != ordering && ordering == Ordering::Equal {
                             ordering = o;

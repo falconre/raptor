@@ -136,6 +136,17 @@ impl Functions {
         ));
 
         functions.push_function_declaration(FunctionDeclaration::new(
+            "fgets",
+            vec![
+                ParameterType::CharPointer,
+                ParameterType::Value,
+                ParameterType::VoidPointer,
+            ],
+            Some(ParameterType::CharPointer),
+            false,
+        ));
+
+        functions.push_function_declaration(FunctionDeclaration::new(
             "fopen",
             vec![ParameterType::CharPointer, ParameterType::CharPointer],
             Some(ParameterType::Value),
@@ -167,6 +178,13 @@ impl Functions {
 
         functions.push_function_declaration(FunctionDeclaration::new(
             "getenv",
+            vec![ParameterType::CharPointer],
+            Some(ParameterType::CharPointer),
+            false,
+        ));
+
+        functions.push_function_declaration(FunctionDeclaration::new(
+            "gets",
             vec![ParameterType::CharPointer],
             Some(ParameterType::CharPointer),
             false,
