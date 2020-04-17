@@ -115,7 +115,11 @@ where
 
             // If nothing changes, go to the next item in the queue.
             if let Some(in_state) = states.get(&location) {
-                if state.partial_cmp(in_state).unwrap() == std::cmp::Ordering::Less {
+                if state
+                    .partial_cmp(in_state)
+                    .expect("partial_cmp between states was none")
+                    == std::cmp::Ordering::Less
+                {
                     panic!("State is less");
                 }
                 if state == *in_state {

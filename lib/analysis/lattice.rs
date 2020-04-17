@@ -5,7 +5,7 @@ use std::cmp::{Ordering, PartialOrd};
 use std::collections::HashMap;
 use std::fmt;
 
-pub trait LatticedValue: Clone {
+pub trait LatticedValue: Clone + fmt::Debug {
     fn join(&self, other: &Self) -> Result<Self>;
 }
 
@@ -49,7 +49,7 @@ impl<V: PartialOrd> PartialOrd for Lattice<V> {
         match self {
             Lattice::Top(_) => match rhs {
                 Lattice::Top(_) => Some(Ordering::Equal),
-                Lattice::Value(_) | Lattice::Bottom(_) => None,
+                Lattice::Value(_) | Lattice::Bottom(_) => Some(Ordering::Greater),
             },
             Lattice::Value(vl) => match rhs {
                 Lattice::Top(_) => Some(Ordering::Less),
@@ -126,7 +126,7 @@ impl<V: LatticedValue> LatticedVariables<V> {
     }
 }
 
-impl<V: PartialOrd> PartialOrd for LatticedVariables<V> {
+impl<V: PartialOrd + fmt::Debug> PartialOrd for LatticedVariables<V> {
     fn partial_cmp(&self, rhs: &LatticedVariables<V>) -> Option<Ordering> {
         let mut order = Ordering::Equal;
 
@@ -135,6 +135,7 @@ impl<V: PartialOrd> PartialOrd for LatticedVariables<V> {
                 Some(rhs_lattice) => match lattice.partial_cmp(rhs_lattice)? {
                     Ordering::Greater => {
                         if order == Ordering::Less {
+                            println!("None 0 on {} {:?}", variable, lattice);
                             return None;
                         } else {
                             order = Ordering::Greater;
@@ -142,6 +143,7 @@ impl<V: PartialOrd> PartialOrd for LatticedVariables<V> {
                     }
                     Ordering::Less => {
                         if order == Ordering::Greater {
+                            println!("None 1 on {} {:?}", variable, lattice);
                             return None;
                         } else {
                             order = Ordering::Less;
@@ -151,6 +153,7 @@ impl<V: PartialOrd> PartialOrd for LatticedVariables<V> {
                 },
                 None => {
                     if order == Ordering::Less {
+                        println!("None 2 on {} {:?}", variable, lattice);
                         return None;
                     } else {
                         order = Ordering::Greater;
@@ -162,6 +165,7 @@ impl<V: PartialOrd> PartialOrd for LatticedVariables<V> {
         for (variable, _) in &rhs.variables {
             if self.variables.get(variable).is_none() {
                 if order == Ordering::Greater {
+                    println!("None 3 on {}", variable);
                     return None;
                 }
                 order = Ordering::Less;
