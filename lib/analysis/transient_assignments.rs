@@ -14,12 +14,11 @@ use std::collections::HashMap;
 pub fn transient_assignments<'f, V: ir::Value>(
     function: &'f ir::Function<V>,
 ) -> Result<HashMap<ir::ProgramLocation, TransientAssignments>> {
-
-    println!("Being transient assignment analysis");
+    // println!("Begin transient assignment analysis");
     let transient_assignment_analysis = TransientAssignmentAnalysis {};
 
     let result = fixed_point_forward(&transient_assignment_analysis, function)?;
-    println!("incoming results");
+    // println!("incoming results");
     Ok(incoming_results(
         &transient_assignment_analysis,
         function,
@@ -246,10 +245,10 @@ impl PartialOrd for TransientAssignments {
                     Some(rt) => {
                         if rt < lt {
                             if order <= Ordering::Equal {
-                                println!("{}", lv);
-                                dbg!(rt);
-                                dbg!(lt);
-                                println!("less 2");
+                                // println!("{}", lv);
+                                // dbg!(rt);
+                                // dbg!(lt);
+                                // println!("less 2");
                                 order = Ordering::Less;
                             } else {
                                 return None;
@@ -287,16 +286,11 @@ impl<'f, V: 'f + ir::Value> FixedPointAnalysis<'f, TransientAssignments, V>
             None => TransientAssignments::new(),
         };
 
-        println!("{}", location);
+        // println!("{}", location);
 
         let state = match location.instruction() {
             Some(instruction) => match instruction.operation() {
                 ir::Operation::Assign { dst, src } => {
-                    if let Some(scalar) = dst.scalar() {
-                        if scalar.name() == "temp_0x914C" {
-                            println!("{} = {}, {:?}", dst, src, state.eval(src));
-                        }
-                    }
                     let mut src = state.eval(src);
                     src.push_chain(location.clone().into());
                     state.set(dst.to_owned(), src);
