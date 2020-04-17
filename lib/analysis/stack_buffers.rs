@@ -39,16 +39,16 @@ impl StackBuffer {
         self.stack_variable.bits()
     }
 
-    pub fn join(&self, other: &StackBuffer) -> Result<Lattice<StackBuffer>> {
+    pub fn join(&self, other: &StackBuffer) -> Result<StackBuffer> {
         Ok(if self == other {
-            Lattice::Value(self.clone())
+            self.clone()
         } else {
             let lhs_offset = self.stack_variable.offset();
             let rhs_offset = other.stack_variable.offset();
-            Lattice::Value(StackBuffer::new(ir::StackVariable::new(
+            StackBuffer::new(ir::StackVariable::new(
                 lhs_offset.min(rhs_offset),
                 self.stack_variable.bits(),
-            )))
+            ))
         })
     }
 }
@@ -64,7 +64,7 @@ impl PartialOrd for StackBuffer {
 }
 
 impl LatticedValue for StackBuffer {
-    fn join(&self, other: &StackBuffer) -> Result<Lattice<StackBuffer>> {
+    fn join(&self, other: &StackBuffer) -> Result<StackBuffer> {
         self.join(other)
     }
 }

@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use std::fmt;
 
 pub trait LatticedValue: Clone {
-    fn join(&self, other: &Self) -> Result<Lattice<Self>>;
+    fn join(&self, other: &Self) -> Result<Self>;
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -36,7 +36,7 @@ impl<V: LatticedValue> Lattice<V> {
             Lattice::Top(bits) => Lattice::Top(*bits),
             Lattice::Value(lhs) => match other {
                 Lattice::Top(bits) => Lattice::Top(*bits),
-                Lattice::Value(rhs) => lhs.join(rhs)?,
+                Lattice::Value(rhs) => Lattice::Value(lhs.join(rhs)?),
                 Lattice::Bottom(_) => Lattice::Value(lhs.clone()),
             },
             Lattice::Bottom(_) => other.clone(),
