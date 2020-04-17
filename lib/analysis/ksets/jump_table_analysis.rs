@@ -262,29 +262,30 @@ impl State {
 }
 
 impl PartialOrd for State {
-    fn partial_cmp(&self, other: &State) -> Option<Ordering> {
+    fn partial_cmp(&self, rhs: &State) -> Option<Ordering> {
         let mut order = Ordering::Equal;
 
         for (variable, kset) in self.variables() {
-            match other.variables().get(variable) {
-                Some(rkset) => {
-                    let cmp = kset.partial_cmp(rkset)?;
-                    if cmp == Ordering::Less {
-                        if order == Ordering::Greater {
-                            return None;
-                        } else {
-                            order = Ordering::Less;
-                        }
-                    } else if cmp == Ordering::Greater {
+            match rhs.variables().get(variable) {
+                Some(rkset) => match kset.partial_cmp(rkset)? {
+                    Ordering::Greater => {
                         if order == Ordering::Less {
                             return None;
                         } else {
                             order = Ordering::Greater;
                         }
                     }
-                }
+                    Ordering::Less => {
+                        if order == Ordering::Greater {
+                            return None;
+                        } else {
+                            order = Ordering::Less;
+                        }
+                    }
+                    Ordering::Equal => {}
+                },
                 None => {
-                    if order == Ordering::Greater {
+                    if order == Ordering::Less {
                         return None;
                     } else {
                         order = Ordering::Greater;
@@ -293,7 +294,7 @@ impl PartialOrd for State {
             }
         }
 
-        for (variable, _) in other.variables() {
+        for (variable, _) in rhs.variables() {
             if self.variables().get(&variable).is_none() {
                 if order == Ordering::Greater {
                     return None;

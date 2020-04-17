@@ -322,13 +322,13 @@ impl<'t> FunctionTranslator<'t> {
         &self,
         mut function: ir::Function<ir::Constant>,
     ) -> Result<ir::Function<ir::Constant>> {
-        return self.optimize_function_inner(function);
+        // return self.optimize_function_inner(function);
 
         let mut i = 0;
         loop {
             i = i + 1;
-            if i > 50 {
-                panic!("too many loops");
+            if i > 10 {
+                panic!("too many iterations");
             }
 
             // Perform inner optimizations
