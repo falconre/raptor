@@ -75,6 +75,12 @@ impl<V: Value> Function<V> {
         self.control_flow_graph_mut().blocks_mut()
     }
 
+    pub fn instructions(&self) -> impl Iterator<Item = &Instruction<V>> {
+        self.blocks()
+            .into_iter()
+            .flat_map(|block| block.instructions().into_iter())
+    }
+
     pub fn edge(&self, head: usize, tail: usize) -> Result<&Edge<V>> {
         Ok(self.control_flow_graph().edge(head, tail)?)
     }
