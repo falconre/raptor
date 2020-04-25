@@ -14,11 +14,10 @@ use std::collections::HashMap;
 pub fn transient_assignments<'f, V: ir::Value>(
     function: &'f ir::Function<V>,
 ) -> Result<HashMap<ir::ProgramLocation, TransientAssignments>> {
-    // println!("Begin transient assignment analysis");
     let transient_assignment_analysis = TransientAssignmentAnalysis {};
 
     let result = fixed_point_forward(&transient_assignment_analysis, function)?;
-    // println!("incoming results");
+
     Ok(incoming_results(
         &transient_assignment_analysis,
         function,
@@ -78,7 +77,7 @@ impl PartialOrd for TransientAssignment {
             TransientAssignment::Top => match other {
                 TransientAssignment::Top => Some(Ordering::Equal),
                 TransientAssignment::Variable(_) | TransientAssignment::Bottom => {
-                    Some(Ordering::Less)
+                    Some(Ordering::Greater)
                 }
             },
             TransientAssignment::Variable(lhs) => match other {
@@ -243,18 +242,14 @@ impl PartialOrd for TransientAssignments {
             for (lv, lt) in &self.chains {
                 match other.chains.get(lv) {
                     Some(rt) => {
-                        if rt < lt {
+                        if lt < rt {
                             if order <= Ordering::Equal {
-                                // println!("{}", lv);
-                                // dbg!(rt);
-                                // dbg!(lt);
-                                // println!("less 2");
                                 order = Ordering::Less;
                             } else {
                                 return None;
                             }
                         } else if lt > rt {
-                            if order >= Ordering::Greater {
+                            if order >= Ordering::Equal {
                                 order = Ordering::Greater;
                             } else {
                                 return None;
@@ -285,8 +280,6 @@ impl<'f, V: 'f + ir::Value> FixedPointAnalysis<'f, TransientAssignments, V>
             Some(state) => state,
             None => TransientAssignments::new(),
         };
-
-        // println!("{}", location);
 
         let state = match location.instruction() {
             Some(instruction) => match instruction.operation() {
