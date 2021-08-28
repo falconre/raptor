@@ -73,8 +73,9 @@ impl XRefs {
                         }
                     }
                 }
-                ir::Operation::Branch { .. } | ir::Operation::Intrinsic(_) | ir::Operation::Nop => {
-                }
+                ir::Operation::Branch { .. }
+                | ir::Operation::Intrinsic(_)
+                | ir::Operation::Nop(_) => {}
             }
         }
 

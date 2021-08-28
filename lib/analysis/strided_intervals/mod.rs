@@ -265,7 +265,7 @@ impl StridedIntervalAnalysis {
                 | ir::Operation::Call(_)
                 | ir::Operation::Intrinsic(_)
                 | ir::Operation::Return(_)
-                | ir::Operation::Nop => {}
+                | ir::Operation::Nop(_) => {}
             }
         }
 
@@ -399,7 +399,7 @@ impl<'r> fixed_point::FixedPointAnalysis<'r, State, ir::Constant> for StridedInt
                     }
                     state
                 }
-                ir::Operation::Return(_) | ir::Operation::Store { .. } | ir::Operation::Nop => {
+                ir::Operation::Return(_) | ir::Operation::Store { .. } | ir::Operation::Nop(_) => {
                     state
                 }
             },

@@ -340,7 +340,7 @@ impl<'f, 'j> fixed_point::FixedPointAnalysis<'f, State, ir::Constant> for JumpTa
 
                         state.set(dst.clone(), self.load_kset(&index, dst.bits())?);
                     }
-                    ir::Operation::Store { .. } | ir::Operation::Nop => {}
+                    ir::Operation::Store { .. } | ir::Operation::Nop(_) => {}
                 }
             }
             ir::RefFunctionLocation::Edge(_) | ir::RefFunctionLocation::EmptyBlock(_) => {}

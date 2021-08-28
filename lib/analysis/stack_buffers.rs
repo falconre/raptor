@@ -210,7 +210,7 @@ impl<'f> fixed_point::FixedPointAnalysis<'f, StackBuffers, ir::Constant> for Sta
                         stack_buffers.top();
                     }
                 }
-                ir::Operation::Store { .. } | ir::Operation::Nop => {}
+                ir::Operation::Store { .. } | ir::Operation::Nop(_) => {}
                 ir::Operation::Branch { .. } | ir::Operation::Return(_) => {
                     stack_buffers.top();
                 }

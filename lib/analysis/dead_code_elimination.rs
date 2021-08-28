@@ -96,7 +96,7 @@ pub fn dead_code_elimination<V: ir::Value>(function: &ir::Function<V>) -> Result
                 ir::Operation::Load { .. } |
                 ir::Operation::Store { .. } |
                 ir::Operation::Return(_) | // We may need to do same thing for return?
-                ir::Operation::Nop => {}
+                ir::Operation::Nop(_) => {}
             }
         }
     }
@@ -118,7 +118,7 @@ pub fn dead_code_elimination<V: ir::Value>(function: &ir::Function<V>) -> Result
                     | ir::Operation::Call(_)
                     | ir::Operation::Intrinsic(_)
                     | ir::Operation::Return(_)
-                    | ir::Operation::Nop => false,
+                    | ir::Operation::Nop(_) => false,
                 })
                 .unwrap_or(false)
         })
@@ -138,10 +138,11 @@ pub fn dead_code_elimination<V: ir::Value>(function: &ir::Function<V>) -> Result
         let instruction_index = k.instruction_index().unwrap();
         let block_index = k.block_index().unwrap();
         let block = dce_function.block_mut(block_index).unwrap();
-        *block
+        let instruction = block
             .instruction_mut(instruction_index)
-            .ok_or("Failed to find instruction")?
-            .operation_mut() = ir::Operation::Nop;
+            .ok_or("Failed to find instruction")?;
+        *instruction.operation_mut() =
+            ir::Operation::Nop(Some(Box::new(instruction.operation().clone())));
     }
 
     Ok(dce_function)

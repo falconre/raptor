@@ -78,11 +78,8 @@ impl<'i> TranslationInformation<'i> {
         let elf = elf.elf();
 
         for section_header in elf.section_headers {
-            let name: &str = match elf.shdr_strtab.get(section_header.sh_name) {
-                Some(name) => match name.ok() {
-                    Some(name) => name,
-                    None => continue,
-                },
+            let name: &str = match elf.shdr_strtab.get_at(section_header.sh_name) {
+                Some(name) => name,
                 None => continue,
             };
 

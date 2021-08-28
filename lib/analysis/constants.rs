@@ -405,7 +405,7 @@ impl<'r, 'c> fixed_point::FixedPointAnalysis<'r, Constants, ir::Constant>
                     }
                     state
                 }
-                ir::Operation::Store { .. } | ir::Operation::Return(_) | ir::Operation::Nop => {
+                ir::Operation::Store { .. } | ir::Operation::Return(_) | ir::Operation::Nop(_) => {
                     state
                 }
             },

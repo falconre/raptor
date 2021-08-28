@@ -321,7 +321,7 @@ impl<'f, V: 'f + ir::Value> FixedPointAnalysis<'f, TransientAssignments, V>
                     }
                     state
                 }
-                ir::Operation::Store { .. } | ir::Operation::Return(_) | ir::Operation::Nop => {
+                ir::Operation::Store { .. } | ir::Operation::Return(_) | ir::Operation::Nop(_) => {
                     state
                 }
             },

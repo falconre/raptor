@@ -200,7 +200,7 @@ pub fn detect_call_information<'f>(
                 ir::Operation::Call { .. }
                 | ir::Operation::Intrinsic { .. }
                 | ir::Operation::Return(_)
-                | ir::Operation::Nop => {}
+                | ir::Operation::Nop(_) => {}
             }
         }
     }

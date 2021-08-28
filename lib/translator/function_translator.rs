@@ -72,7 +72,7 @@ impl<'t> FunctionTranslator<'t> {
                     | ir::Operation::Call { .. }
                     | ir::Operation::Intrinsic { .. }
                     | ir::Operation::Return(_)
-                    | ir::Operation::Nop => {}
+                    | ir::Operation::Nop(_) => {}
                 }
             }
         }
@@ -173,7 +173,7 @@ impl<'t> FunctionTranslator<'t> {
                             *expression = constants[&pl].reduce(expression)?;
                         }
                     }
-                    ir::Operation::Intrinsic { .. } | ir::Operation::Nop => {}
+                    ir::Operation::Intrinsic { .. } | ir::Operation::Nop(_) => {}
                 }
             }
         }
@@ -243,7 +243,8 @@ impl<'t> FunctionTranslator<'t> {
                         block_index,
                         instruction_index
                     ))?;
-                    *instruction.operation_mut() = ir::Operation::Nop;
+                    *instruction.operation_mut() =
+                        ir::Operation::Nop(Some(Box::new(instruction.operation().clone())));
                 }
 
                 new_function.add_transient_variable(variable.clone());
@@ -371,8 +372,9 @@ impl<'t> FunctionTranslator<'t> {
                 return Ok(function);
             }
 
+            let mut translator_options = falcon::translator::Options::new();
+
             // Create manual edges for the extended lifter
-            let mut manual_edges = Vec::new();
             for jump_table in &jump_tables {
                 let rpl = jump_table.location().apply(&function)?;
                 let branch_address = rpl.address().ok_or(
@@ -383,11 +385,13 @@ impl<'t> FunctionTranslator<'t> {
                 for entry in jump_table.entries() {
                     if let Some(permissions) = self.ti().backing().permissions(entry.address()) {
                         if permissions.contains(MemoryPermissions::EXECUTE) {
-                            manual_edges.push((
-                                branch_address,
-                                entry.address(),
-                                Some(entry.condition().clone()),
-                            ));
+                            translator_options.add_manual_edge(
+                                falcon::translator::ManualEdge::new(
+                                    branch_address,
+                                    entry.address(),
+                                    Some(entry.condition().clone()),
+                                ),
+                            );
                         }
                     }
                 }
@@ -401,7 +405,7 @@ impl<'t> FunctionTranslator<'t> {
                 .translate_function_extended(
                     self.ti().backing(),
                     function.address(),
-                    manual_edges,
+                    &translator_options,
                 )?;
 
             // Give it the same index as the original function

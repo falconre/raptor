@@ -55,7 +55,8 @@ impl<V: Value> Block<V> {
             Some(instruction) => instruction,
             None => bail!("Invalid index for Block::replace_with_nop"),
         };
-        *instruction.operation_mut() = Operation::Nop;
+        *instruction.operation_mut() =
+            Operation::Nop(Some(Box::new(instruction.operation().clone())));
         Ok(())
     }
     /// Creates an instruction for an operation and prepends it to the beginning

@@ -5,7 +5,7 @@ use falcon;
 use falcon::analysis::calling_convention::CallingConvention;
 use falcon::architecture::Architecture;
 use falcon::loader::{Elf, Loader, Symbol};
-use falcon::translator::TranslationMemory;
+use falcon::translator::{Options, TranslationMemory};
 use std::collections::HashMap;
 
 pub struct ProgramTranslator<'t> {
@@ -59,8 +59,8 @@ impl<'t> ProgramTranslator<'t> {
 
         // Find the plt section
         for section_header in elf.section_headers {
-            let name: &str = match elf.shdr_strtab.get(section_header.sh_name) {
-                Some(name) => name?,
+            let name: &str = match elf.shdr_strtab.get_at(section_header.sh_name) {
+                Some(name) => name,
                 None => continue,
             };
 
@@ -74,8 +74,11 @@ impl<'t> ProgramTranslator<'t> {
                 let plt_address = start + (i * 4);
 
                 // Translate the block for the plt entry
-                let btr = translator
-                    .translate_block(&self.backing().get_bytes(plt_address, 16), plt_address);
+                let btr = translator.translate_block(
+                    &self.backing().get_bytes(plt_address, 16),
+                    plt_address,
+                    &Options::default(),
+                );
 
                 let btr = match btr {
                     Ok(btr) => btr,

@@ -614,7 +614,7 @@ impl<'f> fixed_point::FixedPointAnalysis<'f, State, ir::Constant> for StackPoint
                     | ir::Operation::Call(_)
                     | ir::Operation::Intrinsic(_)
                     | ir::Operation::Return(_)
-                    | ir::Operation::Nop => {
+                    | ir::Operation::Nop(_) => {
                         for variable_written in instruction
                             .operation()
                             .variables_written()

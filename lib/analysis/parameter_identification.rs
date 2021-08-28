@@ -80,7 +80,7 @@ fn variables_read<V: ir::Value>(o: &ir::Operation<V>) -> Option<Vec<&ir::Variabl
         }),
         ir::Operation::Intrinsic(_) => None,
         ir::Operation::Return(result) => result.as_ref().map(|e| get_variables(e)),
-        ir::Operation::Nop => Some(Vec::new()),
+        ir::Operation::Nop(_) => Some(Vec::new()),
     }
 }
 
