@@ -45,10 +45,11 @@ impl<V: Value> Operation<V> {
                 target: Expression::from_il(target),
             },
             il::Operation::Intrinsic { intrinsic } => Operation::Intrinsic(intrinsic.clone()),
-            il::Operation::Nop { placeholder } => Operation::Nop(match placeholder {
-                Some(operation) => Some(Box::new(Operation::<Constant>::from_il(operation))),
-                None => None,
-            }),
+            il::Operation::Nop { placeholder } => Operation::Nop(
+                placeholder
+                    .as_ref()
+                    .map(|operation| Box::new(Operation::<Constant>::from_il(operation))),
+            ),
         }
     }
 
@@ -147,7 +148,7 @@ impl<V: Value> Operation<V> {
                 .target()
                 .expression()
                 .map(|e| vec![e])
-                .unwrap_or(Vec::new()),
+                .unwrap_or_default(),
             Operation::Intrinsic(_) | Operation::Return(_) | Operation::Nop(_) => Vec::new(),
         }
     }
@@ -162,7 +163,7 @@ impl<V: Value> Operation<V> {
                 .target_mut()
                 .expression_mut()
                 .map(|e| vec![e])
-                .unwrap_or(Vec::new()),
+                .unwrap_or_default(),
             Operation::Intrinsic(_) | Operation::Return(_) | Operation::Nop(_) => Vec::new(),
         }
     }

@@ -38,10 +38,7 @@ pub struct StridedInterval {
 
 impl StridedInterval {
     pub fn new(interval: Interval, stride: usize) -> StridedInterval {
-        StridedInterval {
-            interval: interval,
-            stride: stride,
-        }
+        StridedInterval { interval, stride }
     }
 
     pub fn new_top(bits: usize) -> StridedInterval {
@@ -89,7 +86,7 @@ impl StridedInterval {
     pub fn widen(&self, other: &StridedInterval) -> Result<StridedInterval> {
         Ok(StridedInterval::new(
             self.interval().widen(other.interval())?,
-            self.stride().clone(),
+            self.stride(),
         ))
     }
 

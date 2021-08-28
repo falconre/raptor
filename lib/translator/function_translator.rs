@@ -24,8 +24,8 @@ impl<'t> FunctionTranslator<'t> {
         }
 
         FunctionTranslator {
-            translation_information: translation_information,
-            modules: modules,
+            translation_information,
+            modules,
         }
     }
 
@@ -54,7 +54,7 @@ impl<'t> FunctionTranslator<'t> {
                     .instruction(instruction.index())
                     .expect("Failed to get instruction");
                 let rfl = ir::RefFunctionLocation::Instruction(ref_block, ref_instruction);
-                let rpl = ir::RefProgramLocation::new(&function, rfl);
+                let rpl = ir::RefProgramLocation::new(function, rfl);
                 let spo = match stack_pointer_offsets.get(&rpl.into()) {
                     Some(spo) => spo,
                     None => continue,
@@ -136,7 +136,7 @@ impl<'t> FunctionTranslator<'t> {
         function: &ir::Function<ir::Constant>,
     ) -> Result<ir::Function<ir::Constant>> {
         let mut new_function = function.clone();
-        let constants = analysis::constants::constants(&function, Some(self.ti().backing()))?;
+        let constants = analysis::constants::constants(function, Some(self.ti().backing()))?;
 
         for ref mut block in new_function.blocks_mut() {
             let ref_block = function.block(block.index()).expect("Failed to get block");
@@ -145,7 +145,7 @@ impl<'t> FunctionTranslator<'t> {
                     .instruction(instruction.index())
                     .expect("Failed to get instruction");
                 let rfl = ir::RefFunctionLocation::Instruction(ref_block, ref_instruction);
-                let rpl = ir::RefProgramLocation::new(&function, rfl);
+                let rpl = ir::RefProgramLocation::new(function, rfl);
                 let pl: ir::ProgramLocation = rpl.into();
 
                 match instruction.operation_mut() {
@@ -339,7 +339,7 @@ impl<'t> FunctionTranslator<'t> {
 
         let mut i = 0;
         loop {
-            i = i + 1;
+            i += 1;
             if i > 10 {
                 panic!("too many iterations");
             }
@@ -368,7 +368,7 @@ impl<'t> FunctionTranslator<'t> {
                 .collect::<Vec<JumpTable>>();
 
             // If we recovered any jump tables, we need to deal with those
-            if jump_tables.len() == 0 {
+            if jump_tables.is_empty() {
                 return Ok(function);
             }
 

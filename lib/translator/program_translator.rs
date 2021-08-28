@@ -24,9 +24,9 @@ impl<'t> ProgramTranslator<'t> {
         loader: &'t dyn Loader,
     ) -> Result<ProgramTranslator<'t>> {
         let mut translator = ProgramTranslator {
-            architecture: architecture,
-            calling_convention: calling_convention,
-            loader: loader,
+            architecture,
+            calling_convention,
+            loader,
             backing: loader.memory()?,
             symbols: loader.symbols_map(),
         };

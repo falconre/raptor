@@ -69,7 +69,7 @@ pub fn dead_code_elimination<V: ir::Value>(function: &ir::Function<V>) -> Result
                         rpl.backward()
                             .into_iter()
                             .for_each(|rpl| rd[&rpl.into()].locations()
-                                .into_iter()
+                                .iter()
                                 .map(|location| location.apply(function).unwrap())
                                 // .inspect(|location| println!("{} is alive because {} has no variables_read",
                                 //     location, call))
@@ -87,7 +87,7 @@ pub fn dead_code_elimination<V: ir::Value>(function: &ir::Function<V>) -> Result
                     let rpl = ir::RefProgramLocation::new(function,
                         ir::RefFunctionLocation::Instruction(block, instruction));
                     rd[&rpl.into()].locations()
-                        .into_iter()
+                        .iter()
                         .for_each(|location| {
                             live.insert(location.function_location().clone());
                         });
@@ -104,7 +104,9 @@ pub fn dead_code_elimination<V: ir::Value>(function: &ir::Function<V>) -> Result
     let du = def_use(function)?;
 
     // Get every assignment with no uses, that isn't in live
-    let kill = function
+
+    // Eliminate those instructions from our new function
+    let kill: Vec<ir::FunctionLocation> = function
         .program_locations()
         .into_iter()
         // we will only remove certain types of instructions
@@ -124,13 +126,9 @@ pub fn dead_code_elimination<V: ir::Value>(function: &ir::Function<V>) -> Result
         })
         .map(|location| location.into())
         .filter(|location: &ir::ProgramLocation| !live.contains(location.function_location()))
-        .filter(|location: &ir::ProgramLocation| du[&location].is_empty())
+        .filter(|location: &ir::ProgramLocation| du[location].is_empty())
         .map(|location| location.function_location().clone())
-        .collect::<Vec<ir::FunctionLocation>>();
-
-    // Eliminate those instructions from our new function
-    let kill: Vec<ir::FunctionLocation> =
-        kill.into_iter().map(|location| location.into()).collect();
+        .collect();
 
     let mut dce_function = function.clone();
 

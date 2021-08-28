@@ -7,13 +7,13 @@ use std::collections::HashMap;
 pub fn reaching_definitions<'r, V: ir::Value>(
     function: &'r ir::Function<V>,
 ) -> Result<HashMap<ir::ProgramLocation, LocationSet>> {
-    let reaching_definitions = ReachingDefinitions { function: function };
+    let reaching_definitions = ReachingDefinitions { function };
 
     fixed_point::incoming_results(
         &reaching_definitions,
         function,
         fixed_point::fixed_point_forward(&reaching_definitions, function)?,
-        || LocationSet::new(),
+        LocationSet::new,
     )
 }
 
@@ -36,16 +36,16 @@ impl<'r, V: ir::Value> fixed_point::FixedPointAnalysis<'r, LocationSet, V>
         };
 
         match *location.function_location() {
-            ir::RefFunctionLocation::Instruction(_, ref instruction) => {
+            ir::RefFunctionLocation::Instruction(_, instruction) => {
                 instruction
                     .operation()
                     .variables_written()
-                    .unwrap_or_else(|| Vec::new())
+                    .unwrap_or_else(Vec::new)
                     .into_iter()
                     .for_each(|variable_written| {
                         let kill: Vec<ir::ProgramLocation> = state
                             .locations()
-                            .into_iter()
+                            .iter()
                             .filter(|location| {
                                 location
                                     .apply(self.function)
@@ -54,13 +54,13 @@ impl<'r, V: ir::Value> fixed_point::FixedPointAnalysis<'r, LocationSet, V>
                                     .unwrap()
                                     .operation()
                                     .variables_written()
-                                    .unwrap_or_else(|| Vec::new())
+                                    .unwrap_or_else(Vec::new)
                                     .into_iter()
                                     .any(|variable| variable == variable_written)
                             })
                             .cloned()
                             .collect();
-                        kill.iter().for_each(|location| state.remove(&location));
+                        kill.iter().for_each(|location| state.remove(location));
                         state.insert(location.clone().into());
                     });
             }

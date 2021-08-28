@@ -24,7 +24,7 @@ pub fn strided_intervals<'f>(
         &strided_interval_analysis,
         function,
         strided_intervals,
-        || State::new(),
+        State::new,
     )
 }
 
@@ -65,7 +65,7 @@ impl State {
             ir::Expression::LValue(lvalue) => match lvalue.as_ref() {
                 ir::LValue::Variable(variable) => self
                     .variable(variable)
-                    .map(|si| si.clone())
+                    .cloned()
                     .unwrap_or(StridedInterval::new_top(e.bits())),
                 ir::LValue::Dereference(_) => StridedInterval::new_top(e.bits()),
             },
@@ -73,25 +73,25 @@ impl State {
                 ir::RValue::Value(strided_interval) => strided_interval.clone(),
                 ir::RValue::Reference(_) => StridedInterval::new_top(e.bits()),
             },
-            ir::Expression::Add(lhs, rhs) => self.eval(&lhs)?.add(&self.eval(rhs)?)?,
-            ir::Expression::Sub(lhs, rhs) => self.eval(&lhs)?.sub(&self.eval(rhs)?)?,
-            ir::Expression::Mul(lhs, rhs) => self.eval(&lhs)?.mul(&self.eval(rhs)?)?,
-            ir::Expression::Divu(lhs, rhs) => self.eval(&lhs)?.divu(&self.eval(rhs)?)?,
-            ir::Expression::Modu(lhs, rhs) => self.eval(&lhs)?.modu(&self.eval(rhs)?)?,
-            ir::Expression::Divs(lhs, rhs) => self.eval(&lhs)?.divs(&self.eval(rhs)?)?,
-            ir::Expression::Mods(lhs, rhs) => self.eval(&lhs)?.mods(&self.eval(rhs)?)?,
-            ir::Expression::And(lhs, rhs) => self.eval(&lhs)?.and(&self.eval(rhs)?)?,
-            ir::Expression::Or(lhs, rhs) => self.eval(&lhs)?.or(&self.eval(rhs)?)?,
-            ir::Expression::Xor(lhs, rhs) => self.eval(&lhs)?.xor(&self.eval(rhs)?)?,
-            ir::Expression::Shl(lhs, rhs) => self.eval(&lhs)?.shl(&self.eval(rhs)?)?,
-            ir::Expression::Shr(lhs, rhs) => self.eval(&lhs)?.shr(&self.eval(rhs)?)?,
-            ir::Expression::Cmpeq(lhs, rhs) => self.eval(&lhs)?.cmpeq(&self.eval(rhs)?)?,
-            ir::Expression::Cmpneq(lhs, rhs) => self.eval(&lhs)?.cmpneq(&self.eval(rhs)?)?,
-            ir::Expression::Cmplts(lhs, rhs) => self.eval(&lhs)?.cmplts(&self.eval(rhs)?)?,
-            ir::Expression::Cmpltu(lhs, rhs) => self.eval(&lhs)?.cmpltu(&self.eval(rhs)?)?,
-            ir::Expression::Trun(bits, rhs) => self.eval(&rhs)?.trun(*bits)?,
-            ir::Expression::Zext(bits, rhs) => self.eval(&rhs)?.zext(*bits)?,
-            ir::Expression::Sext(bits, rhs) => self.eval(&rhs)?.sext(*bits)?,
+            ir::Expression::Add(lhs, rhs) => self.eval(lhs)?.add(&self.eval(rhs)?)?,
+            ir::Expression::Sub(lhs, rhs) => self.eval(lhs)?.sub(&self.eval(rhs)?)?,
+            ir::Expression::Mul(lhs, rhs) => self.eval(lhs)?.mul(&self.eval(rhs)?)?,
+            ir::Expression::Divu(lhs, rhs) => self.eval(lhs)?.divu(&self.eval(rhs)?)?,
+            ir::Expression::Modu(lhs, rhs) => self.eval(lhs)?.modu(&self.eval(rhs)?)?,
+            ir::Expression::Divs(lhs, rhs) => self.eval(lhs)?.divs(&self.eval(rhs)?)?,
+            ir::Expression::Mods(lhs, rhs) => self.eval(lhs)?.mods(&self.eval(rhs)?)?,
+            ir::Expression::And(lhs, rhs) => self.eval(lhs)?.and(&self.eval(rhs)?)?,
+            ir::Expression::Or(lhs, rhs) => self.eval(lhs)?.or(&self.eval(rhs)?)?,
+            ir::Expression::Xor(lhs, rhs) => self.eval(lhs)?.xor(&self.eval(rhs)?)?,
+            ir::Expression::Shl(lhs, rhs) => self.eval(lhs)?.shl(&self.eval(rhs)?)?,
+            ir::Expression::Shr(lhs, rhs) => self.eval(lhs)?.shr(&self.eval(rhs)?)?,
+            ir::Expression::Cmpeq(lhs, rhs) => self.eval(lhs)?.cmpeq(&self.eval(rhs)?)?,
+            ir::Expression::Cmpneq(lhs, rhs) => self.eval(lhs)?.cmpneq(&self.eval(rhs)?)?,
+            ir::Expression::Cmplts(lhs, rhs) => self.eval(lhs)?.cmplts(&self.eval(rhs)?)?,
+            ir::Expression::Cmpltu(lhs, rhs) => self.eval(lhs)?.cmpltu(&self.eval(rhs)?)?,
+            ir::Expression::Trun(bits, rhs) => self.eval(rhs)?.trun(*bits)?,
+            ir::Expression::Zext(bits, rhs) => self.eval(rhs)?.zext(*bits)?,
+            ir::Expression::Sext(bits, rhs) => self.eval(rhs)?.sext(*bits)?,
             ir::Expression::Ite(_, then, _) => StridedInterval::new_top(then.bits()),
         })
     }
@@ -194,7 +194,7 @@ impl StridedIntervalAnalysis {
     fn new(function: &ir::Function<ir::Constant>) -> Result<StridedIntervalAnalysis> {
         let use_def = use_def(function)?;
 
-        Ok(StridedIntervalAnalysis { use_def: use_def })
+        Ok(StridedIntervalAnalysis { use_def })
     }
 
     fn use_def(&self, program_location: &ir::ProgramLocation) -> &LocationSet {
@@ -228,7 +228,7 @@ impl StridedIntervalAnalysis {
 
         while !queue.is_empty() {
             let pl = queue.pop_front().unwrap();
-            locations_considered.insert(pl.clone().into());
+            locations_considered.insert(pl.clone());
 
             let rpl = pl.apply(ref_program_location.function())?;
 
@@ -302,7 +302,7 @@ impl StridedIntervalAnalysis {
 
         while !queue.is_empty() {
             let pl = queue.pop_front().unwrap();
-            locations_considered.insert(pl.clone().into());
+            locations_considered.insert(pl.clone());
 
             let rpl = pl.apply(ref_program_location.function())?;
 
@@ -375,7 +375,7 @@ impl<'r> fixed_point::FixedPointAnalysis<'r, State, ir::Constant> for StridedInt
                 }
                 ir::Operation::Call(call) => {
                     if let Some(variables) = call.variables_written() {
-                        variables.into_iter().for_each(|variable| {
+                        variables.iter().for_each(|variable| {
                             state.set(variable.clone(), StridedInterval::new_top(variable.bits()));
                         });
                     } else {
@@ -418,7 +418,7 @@ impl<'r> fixed_point::FixedPointAnalysis<'r, State, ir::Constant> for StridedInt
                     //     );
                     // }
 
-                    for variable in self.block_guarded_variables(&location)? {
+                    for variable in self.block_guarded_variables(location)? {
                         if let Some(constant) = fast_solver.variable(&variable) {
                             let strided_interval = StridedInterval::new(
                                 Interval::new(
@@ -434,10 +434,8 @@ impl<'r> fixed_point::FixedPointAnalysis<'r, State, ir::Constant> for StridedInt
                         let variable_expression: ir::Expression<ir::Constant> =
                             variable.clone().into();
 
-                        let lo =
-                            solver::minimize(&fast_solver.constraints(), &variable_expression)?;
-                        let hi =
-                            solver::maximize(&fast_solver.constraints(), &variable_expression)?;
+                        let lo = solver::minimize(fast_solver.constraints(), &variable_expression)?;
+                        let hi = solver::maximize(fast_solver.constraints(), &variable_expression)?;
 
                         let lo: Value = match lo {
                             Some(constant) => Value::Value(constant),

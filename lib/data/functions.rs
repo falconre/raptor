@@ -69,9 +69,9 @@ impl FunctionDeclaration {
     ) -> FunctionDeclaration {
         FunctionDeclaration {
             name: name.into(),
-            parameters: parameters,
-            return_type: return_type,
-            no_return: no_return,
+            parameters,
+            return_type,
+            no_return,
         }
     }
 

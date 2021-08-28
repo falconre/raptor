@@ -22,17 +22,17 @@ pub fn def_use<'r, V: ir::Value>(
                 instruction
                     .operation()
                     .variables_read()
-                    .unwrap_or(Vec::new())
+                    .unwrap_or_default()
                     .into_iter()
                     .for_each(|variable_read| {
-                        rd[&location].locations().into_iter().for_each(|rd| {
+                        rd[location].locations().iter().for_each(|rd| {
                             rd.apply(function)
                                 .unwrap()
                                 .instruction()
                                 .unwrap()
                                 .operation()
                                 .variables_written()
-                                .unwrap_or(Vec::new())
+                                .unwrap_or_default()
                                 .into_iter()
                                 .for_each(|variable_written| {
                                     if variable_written == variable_read {
@@ -44,19 +44,19 @@ pub fn def_use<'r, V: ir::Value>(
                         })
                     });
             }
-            ir::RefFunctionLocation::Edge(ref edge) => {
+            ir::RefFunctionLocation::Edge(edge) => {
                 if let Some(condition_variables) =
                     edge.condition().map(|condition| condition.variables())
                 {
                     condition_variables.into_iter().for_each(|variable_read| {
-                        rd[&location].locations().into_iter().for_each(|rd| {
+                        rd[location].locations().iter().for_each(|rd| {
                             rd.apply(function)
                                 .unwrap()
                                 .instruction()
                                 .unwrap()
                                 .operation()
                                 .variables_written()
-                                .unwrap_or(Vec::new())
+                                .unwrap_or_default()
                                 .into_iter()
                                 .for_each(|variable_written| {
                                     if variable_written == variable_read {

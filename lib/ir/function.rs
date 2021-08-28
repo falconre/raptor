@@ -17,7 +17,7 @@ impl<V: Value> Function<V> {
     pub fn from_il(function: &il::Function) -> Result<Function<Constant>> {
         Ok(Function {
             address: function.address(),
-            index: function.index().clone(),
+            index: function.index(),
             control_flow_graph: ControlFlowGraph::<Constant>::from_il(
                 function.control_flow_graph(),
             )?,
@@ -31,7 +31,7 @@ impl<V: Value> Function<V> {
         self.address
     }
     pub fn index(&self) -> Option<usize> {
-        self.index.clone()
+        self.index
     }
     pub fn name(&self) -> &str {
         &self.name
@@ -42,7 +42,7 @@ impl<V: Value> Function<V> {
     }
 
     pub fn parameters(&self) -> Option<&[Variable]> {
-        self.parameters.as_ref().map(|p| p.as_slice())
+        self.parameters.as_deref()
     }
     pub fn set_parameters(&mut self, parameters: Option<Vec<Variable>>) {
         self.parameters = parameters;
@@ -63,10 +63,10 @@ impl<V: Value> Function<V> {
     }
 
     pub fn block(&self, index: usize) -> Result<&Block<V>> {
-        Ok(self.control_flow_graph().block(index)?)
+        self.control_flow_graph().block(index)
     }
     pub fn block_mut(&mut self, index: usize) -> Result<&mut Block<V>> {
-        Ok(self.control_flow_graph_mut().block_mut(index)?)
+        self.control_flow_graph_mut().block_mut(index)
     }
     pub fn blocks(&self) -> Vec<&Block<V>> {
         self.control_flow_graph().blocks()
@@ -78,11 +78,11 @@ impl<V: Value> Function<V> {
     pub fn instructions(&self) -> impl Iterator<Item = &Instruction<V>> {
         self.blocks()
             .into_iter()
-            .flat_map(|block| block.instructions().into_iter())
+            .flat_map(|block| block.instructions().iter())
     }
 
     pub fn edge(&self, head: usize, tail: usize) -> Result<&Edge<V>> {
-        Ok(self.control_flow_graph().edge(head, tail)?)
+        self.control_flow_graph().edge(head, tail)
     }
     pub fn edges(&self) -> Vec<&Edge<V>> {
         self.control_flow_graph().edges()

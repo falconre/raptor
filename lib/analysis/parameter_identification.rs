@@ -73,7 +73,7 @@ fn variables_read<V: ir::Value>(o: &ir::Operation<V>) -> Option<Vec<&ir::Variabl
         ir::Operation::Load { index, .. } => Some(get_variables(index)),
         ir::Operation::Branch { target } => Some(get_variables(target)),
         ir::Operation::Call(call) => call.arguments().map(|arguments| {
-            arguments.into_iter().fold(Vec::new(), |mut v, argument| {
+            arguments.iter().fold(Vec::new(), |mut v, argument| {
                 v.append(&mut get_variables(argument));
                 v
             })

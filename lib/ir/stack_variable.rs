@@ -13,8 +13,8 @@ pub struct StackVariable {
 impl StackVariable {
     pub fn new(offset: isize, bits: usize) -> StackVariable {
         StackVariable {
-            offset: offset,
-            bits: bits,
+            offset,
+            bits,
             ssa: None,
         }
     }
@@ -26,7 +26,7 @@ impl StackVariable {
         self.bits
     }
     pub fn ssa(&self) -> Option<usize> {
-        self.ssa.clone()
+        self.ssa
     }
 
     pub fn set_ssa(&mut self, ssa: Option<usize>) {

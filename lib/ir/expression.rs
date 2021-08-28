@@ -541,10 +541,10 @@ impl<V: Value> Expression<V> {
         if lhs.bits() != rhs.bits() {
             return Err(ErrorKind::Sort.into());
         }
-        Ok(Expression::or(
+        Expression::or(
             Expression::cmpeq(lhs.clone(), rhs.clone())?,
             Expression::cmpltu(lhs, rhs)?,
-        )?)
+        )
     }
 
     pub fn trun(bits: usize, rhs: Expression<V>) -> Result<Expression<V>> {

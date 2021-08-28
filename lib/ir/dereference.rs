@@ -9,9 +9,7 @@ pub struct Dereference<V: Value> {
 
 impl<V: Value> Dereference<V> {
     pub fn new(expression: Expression<V>) -> Dereference<V> {
-        Dereference {
-            expression: expression,
-        }
+        Dereference { expression }
     }
 
     pub fn bits(&self) -> usize {

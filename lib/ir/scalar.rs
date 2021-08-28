@@ -19,7 +19,7 @@ impl Scalar {
     {
         Scalar {
             name: name.into(),
-            bits: bits,
+            bits,
             ssa: None,
         }
     }
@@ -35,7 +35,7 @@ impl Scalar {
     }
 
     pub fn ssa(&self) -> Option<usize> {
-        self.ssa.clone()
+        self.ssa
     }
 
     pub fn set_ssa(&mut self, ssa: Option<usize>) {

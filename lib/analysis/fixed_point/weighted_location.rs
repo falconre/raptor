@@ -11,10 +11,7 @@ pub(crate) struct WeightedLocation {
 
 impl WeightedLocation {
     pub(crate) fn new(weight: usize, location: ir::ProgramLocation) -> WeightedLocation {
-        WeightedLocation {
-            weight: weight,
-            location: location,
-        }
+        WeightedLocation { weight, location }
     }
 
     // pub(crate) fn weight(&self) -> usize { self.weight }

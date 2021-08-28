@@ -59,12 +59,11 @@ fn detect_call<'f>(
                 Some(stack_pointer) => stack_pointer,
                 None => return None,
             };
-            let stack_value = match block_state
-                .load(&stack_pointer.constant(), stack_pointer.constant().bits())
-            {
-                Some(stack_pointer) => stack_pointer,
-                None => return None,
-            };
+            let stack_value =
+                match block_state.load(stack_pointer.constant(), stack_pointer.constant().bits()) {
+                    Some(stack_pointer) => stack_pointer,
+                    None => return None,
+                };
             // just get every other instruction with the same instruction address,
             // that isn't this call
             let mut other_instructions = Vec::new();
@@ -158,18 +157,18 @@ pub fn detect_call_information<'f>(
                 ir::Operation::Assign { dst, src } => {
                     let src = block_state
                         .eval(src)?
-                        .map(|src| TaggedConstant::new(src, vec![rfl.into()]));
+                        .map(|src| TaggedConstant::new(src, vec![rfl]));
                     block_state.set(dst.clone(), src)?;
                 }
                 ir::Operation::Load { dst, index } => {
                     let constant = block_state
-                        .eval(&index)?
+                        .eval(index)?
                         .and_then(|index| block_state.load(&index, dst.bits()))
                         .map(|tagged_value| tagged_value.constant().clone());
 
                     block_state.set(
                         dst.clone(),
-                        constant.map(|constant| TaggedConstant::new(constant, vec![rfl.into()])),
+                        constant.map(|constant| TaggedConstant::new(constant, vec![rfl])),
                     )?;
                 }
                 ir::Operation::Store { index, src } => {

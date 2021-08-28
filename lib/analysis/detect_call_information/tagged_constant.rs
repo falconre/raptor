@@ -15,8 +15,8 @@ impl<'t> TaggedConstant<'t> {
         locations.sort();
         locations.dedup();
         TaggedConstant {
-            constant: constant,
-            locations: locations,
+            constant,
+            locations,
         }
     }
 
@@ -78,7 +78,7 @@ impl<'t> ::falcon::memory::Value for TaggedConstant<'t> {
         Ok(TaggedConstant::new(
             constant,
             self.locations()
-                .into_iter()
+                .iter()
                 .chain(other.locations())
                 .cloned()
                 .collect(),

@@ -70,7 +70,7 @@ where
     // Add either the first instruction in the first block, or an empty block,
     // to start us off
     let weighted_location = match entry_block.instructions().first() {
-        Some(ref instruction) => {
+        Some(instruction) => {
             let location = ir::RefFunctionLocation::Instruction(entry_block, instruction);
             let location = ir::RefProgramLocation::new(function, location);
             WeightedLocation::new(block_weights[&entry_index], location.into())
@@ -114,7 +114,7 @@ where
             let state = analysis.trans(&rpl, state)?;
 
             // If nothing changes, go to the next item in the queue.
-            if let Some(in_state) = states.get(&location) {
+            if let Some(in_state) = states.get(location) {
                 if state
                     .partial_cmp(in_state)
                     .expect("partial_cmp between states was none")

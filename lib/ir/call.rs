@@ -50,7 +50,7 @@ pub struct Call<V: Value> {
 impl<V: Value> Call<V> {
     pub fn new(target: CallTarget<V>) -> Call<V> {
         Call {
-            target: target,
+            target,
             arguments: None,
             variables_written: None,
         }
@@ -82,14 +82,14 @@ impl<V: Value> Call<V> {
     }
 
     pub fn variables_written(&self) -> Option<&[Variable]> {
-        self.variables_written.as_ref().map(|v| v.as_slice())
+        self.variables_written.as_deref()
     }
     pub fn set_variables_written(&mut self, variables_written: Option<Vec<Variable>>) {
         self.variables_written = variables_written;
     }
 
     pub fn arguments(&self) -> Option<&[Expression<V>]> {
-        self.arguments.as_ref().map(|v| v.as_slice())
+        self.arguments.as_deref()
     }
 
     pub fn arguments_mut(&mut self) -> Option<&mut [Expression<V>]> {

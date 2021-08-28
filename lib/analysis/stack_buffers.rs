@@ -26,9 +26,7 @@ pub struct StackBuffer {
 
 impl StackBuffer {
     pub fn new(stack_variable: ir::StackVariable) -> StackBuffer {
-        StackBuffer {
-            stack_variable: stack_variable,
-        }
+        StackBuffer { stack_variable }
     }
 
     pub fn stack_variable(&self) -> &ir::StackVariable {
@@ -77,9 +75,7 @@ impl Into<ir::StackVariable> for StackBuffer {
 
 impl From<ir::StackVariable> for StackBuffer {
     fn from(stack_variable: ir::StackVariable) -> StackBuffer {
-        StackBuffer {
-            stack_variable: stack_variable,
-        }
+        StackBuffer { stack_variable }
     }
 }
 

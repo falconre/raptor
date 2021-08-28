@@ -12,8 +12,8 @@ impl<'f> ReturnSite<'f> {
         get_return_address: Vec<ir::RefFunctionLocation<'f, ir::Constant>>,
     ) -> ReturnSite<'f> {
         ReturnSite {
-            branch: branch,
-            get_return_address: get_return_address,
+            branch,
+            get_return_address,
         }
     }
 

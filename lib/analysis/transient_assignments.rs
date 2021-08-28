@@ -18,12 +18,12 @@ pub fn transient_assignments<'f, V: ir::Value>(
 
     let result = fixed_point_forward(&transient_assignment_analysis, function)?;
 
-    Ok(incoming_results(
+    incoming_results(
         &transient_assignment_analysis,
         function,
         result,
-        || TransientAssignments::new(),
-    )?)
+        TransientAssignments::new,
+    )
 }
 
 #[allow(dead_code)]
@@ -109,7 +109,7 @@ impl TransientAssignmentChain {
     pub fn new(assignment: TransientAssignment) -> TransientAssignmentChain {
         TransientAssignmentChain {
             chain: Vec::new(),
-            assignment: assignment,
+            assignment,
         }
     }
 
@@ -137,7 +137,7 @@ impl TransientAssignmentChain {
 
         TransientAssignmentChain {
             assignment: self.assignment.join(&other.assignment),
-            chain: chain,
+            chain,
         }
     }
 
@@ -180,11 +180,12 @@ impl TransientAssignments {
         match expression {
             ir::Expression::LValue(lvalue) => match lvalue.as_ref() {
                 ir::LValue::Variable(variable) => {
-                    self.chains.get(variable).map(|v| v.clone()).unwrap_or(
-                        TransientAssignmentChain::new(TransientAssignment::Variable(
-                            variable.clone(),
-                        )),
-                    )
+                    self.chains
+                        .get(variable)
+                        .cloned()
+                        .unwrap_or(TransientAssignmentChain::new(
+                            TransientAssignment::Variable(variable.clone()),
+                        ))
                 }
                 ir::LValue::Dereference(_) => {
                     TransientAssignmentChain::new(TransientAssignment::Top)
@@ -198,7 +199,7 @@ impl TransientAssignments {
         for (variable, tac) in &other.chains {
             self.chains
                 .entry(variable.clone())
-                .and_modify(|v| *v = v.join(&tac))
+                .and_modify(|v| *v = v.join(tac))
                 .or_insert(tac.clone());
         }
         self
@@ -296,9 +297,8 @@ impl<'f, V: 'f + ir::Value> FixedPointAnalysis<'f, TransientAssignments, V>
                 ir::Operation::Call(call) => {
                     if let Some(arguments) = call.arguments() {
                         arguments
-                            .into_iter()
-                            .filter(|argument| argument.variable().is_some())
-                            .map(|argument| argument.variable().unwrap())
+                            .iter()
+                            .filter_map(|argument| argument.variable())
                             .for_each(|argument| {
                                 state.set(argument.clone(), TransientAssignmentChain::new_top())
                             });

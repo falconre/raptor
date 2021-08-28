@@ -22,8 +22,8 @@ impl<'b> BlockState<'b> {
             self.variables.iter().try_fold(
                 expression.clone(),
                 |expression, (variable, tagged_constant)| {
-                    Ok(expression
-                        .replace_variable(&variable, &tagged_constant.constant().clone().into())?)
+                    expression
+                        .replace_variable(variable, &tagged_constant.constant().clone().into())
                 },
             );
 

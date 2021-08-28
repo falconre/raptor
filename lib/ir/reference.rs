@@ -10,10 +10,7 @@ pub struct Reference<V: Value> {
 
 impl<V: Value> Reference<V> {
     pub fn new(expression: Expression<V>, bits: usize) -> Reference<V> {
-        Reference {
-            expression: expression,
-            bits: bits,
-        }
+        Reference { expression, bits }
     }
 
     pub fn expression(&self) -> &Expression<V> {

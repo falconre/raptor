@@ -23,11 +23,11 @@ impl<'i> TranslationInformation<'i> {
         loader: &'i dyn Loader,
     ) -> TranslationInformation<'i> {
         TranslationInformation {
-            architecture: architecture,
-            calling_convention: calling_convention,
-            backing: backing,
-            symbols: symbols,
-            loader: loader,
+            architecture,
+            calling_convention,
+            backing,
+            symbols,
+            loader,
         }
     }
 
@@ -36,11 +36,11 @@ impl<'i> TranslationInformation<'i> {
     }
 
     pub fn calling_convention(&self) -> &CallingConvention {
-        &self.calling_convention
+        self.calling_convention
     }
 
     pub fn backing(&self) -> &backing::Memory {
-        &self.backing
+        self.backing
     }
 
     pub fn loader(&self) -> &dyn Loader {
@@ -48,7 +48,7 @@ impl<'i> TranslationInformation<'i> {
     }
 
     pub fn symbols(&self) -> &HashMap<u64, Symbol> {
-        &self.symbols
+        self.symbols
     }
 
     pub fn stack_pointer(&self) -> ir::Scalar {

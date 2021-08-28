@@ -17,7 +17,7 @@ pub struct KSet {
 
 impl KSet {
     pub fn new(k: usize, value: KSetValue) -> KSet {
-        KSet { k: k, value: value }
+        KSet { k, value }
     }
 
     pub fn new_top(bits: usize) -> KSet {

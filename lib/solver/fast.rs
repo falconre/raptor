@@ -133,10 +133,8 @@ impl FastSolver {
                 self.variables.insert(variable, value);
             }
 
-            if next_queue.len() == queue_len {
-                if !variable_topped {
-                    break;
-                }
+            if next_queue.len() == queue_len && !variable_topped {
+                break;
             }
 
             while !next_queue.is_empty() {

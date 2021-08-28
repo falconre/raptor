@@ -155,11 +155,7 @@ impl Value {
                     let shift = ir::const_(lhs.bits() as u64 - 1, lhs.bits());
                     let lhs_bit = lhs.shr(&shift)?.trun(1)?.value_u64().unwrap();
                     let rhs_bit = lhs.shr(&shift)?.trun(1)?.value_u64().unwrap();
-                    if lhs_bit != rhs_bit {
-                        true
-                    } else {
-                        false
-                    }
+                    lhs_bit != rhs_bit
                 }
             },
             Value::Bottom(_) => false,

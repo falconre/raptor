@@ -67,11 +67,11 @@ pub fn value_expr<V: Value>(value: V) -> Expression<V> {
 }
 
 pub fn reference_expr<V: Value>(expr: Expression<V>, bits: usize) -> Expression<V> {
-    RValue::Reference(Reference::new(expr, bits).into()).into()
+    RValue::Reference(Reference::new(expr, bits)).into()
 }
 
 pub fn dereference_expr<V: Value>(expr: Expression<V>) -> Expression<V> {
-    LValue::Dereference(Dereference::new(expr).into()).into()
+    LValue::Dereference(Dereference::new(expr)).into()
 }
 
 pub fn scalar<S: Into<String>>(name: S, bits: usize) -> Scalar {
@@ -268,17 +268,17 @@ pub fn reduce(expr: &Expression<Constant>) -> Result<Expression<Constant>> {
             }
         },
         Expression::Add(lhs, rhs) => {
-            reduce_binop(reduce(&lhs)?, reduce(&rhs)?, Expression::add, |lhs, rhs| {
+            reduce_binop(reduce(lhs)?, reduce(rhs)?, Expression::add, |lhs, rhs| {
                 lhs + rhs
             })?
         }
         Expression::Sub(lhs, rhs) => {
-            reduce_binop(reduce(&lhs)?, reduce(&rhs)?, Expression::sub, |lhs, rhs| {
+            reduce_binop(reduce(lhs)?, reduce(rhs)?, Expression::sub, |lhs, rhs| {
                 lhs - rhs
             })?
         }
         Expression::And(lhs, rhs) => {
-            reduce_binop(reduce(&lhs)?, reduce(&rhs)?, Expression::and, |lhs, rhs| {
+            reduce_binop(reduce(lhs)?, reduce(rhs)?, Expression::and, |lhs, rhs| {
                 lhs & rhs
             })?
         }
@@ -323,12 +323,12 @@ pub fn simplify(expr: &Expression<Constant>) -> Result<Option<Expression<Constan
                         if let Some(constant) = ll.as_ref().constant() {
                             return Ok(Some(Expression::add(
                                 constant.sub(rhs_constant)?.into(),
-                                rr.as_ref().clone().into(),
+                                rr.as_ref().clone(),
                             )?));
                         }
                         if let Some(constant) = rr.as_ref().constant() {
                             return Ok(Some(Expression::add(
-                                ll.as_ref().clone().into(),
+                                ll.as_ref().clone(),
                                 constant.sub(rhs_constant)?.into(),
                             )?));
                         }
@@ -345,7 +345,7 @@ pub fn simplify(expr: &Expression<Constant>) -> Result<Option<Expression<Constan
                                         bits,
                                     )
                                     .into(),
-                                    rr.as_ref().clone().into(),
+                                    rr.as_ref().clone(),
                                 )?));
                             }
                         }
@@ -353,7 +353,7 @@ pub fn simplify(expr: &Expression<Constant>) -> Result<Option<Expression<Constan
                     _ => {}
                 }
                 if rhs_constant.is_zero() {
-                    return Ok(Some(lhs.as_ref().clone().into()));
+                    return Ok(Some(lhs.as_ref().clone()));
                 }
             }
         }

@@ -316,7 +316,7 @@ struct ConstantsAnalysis<'c> {
 
 impl<'c> ConstantsAnalysis<'c> {
     pub fn new(backing: Option<&'c falcon::memory::backing::Memory>) -> ConstantsAnalysis<'c> {
-        ConstantsAnalysis { backing: backing }
+        ConstantsAnalysis { backing }
     }
 }
 
@@ -338,19 +338,19 @@ impl<'r, 'c> fixed_point::FixedPointAnalysis<'r, Constants, ir::Constant>
                 ir::Operation::Assign { dst, src } => {
                     let constant = state
                         .eval(src)?
-                        .map(|constant| Constant::Constant(constant))
+                        .map(Constant::Constant)
                         .unwrap_or(Constant::Top);
 
                     state.set_variable(dst.clone(), constant);
                     state
                 }
                 ir::Operation::Load { dst, index } => {
-                    if let Some(address) = state.eval(&index)?.and_then(|c| c.value_u64()) {
+                    if let Some(address) = state.eval(index)?.and_then(|c| c.value_u64()) {
                         let is_read_only_memory = self
                             .backing
                             .and_then(|backing| {
                                 backing.permissions(address).map(|permissions| {
-                                    (permissions.contains(MemoryPermissions::WRITE) == false)
+                                    !permissions.contains(MemoryPermissions::WRITE)
                                         && (permissions.contains(MemoryPermissions::READ))
                                 })
                             })
@@ -365,9 +365,7 @@ impl<'r, 'c> fixed_point::FixedPointAnalysis<'r, Constants, ir::Constant>
                             let value = self
                                 .backing
                                 .and_then(|backing| {
-                                    backing
-                                        .get(address, dst.bits())
-                                        .map(|constant| Constant::Constant(constant))
+                                    backing.get(address, dst.bits()).map(Constant::Constant)
                                 })
                                 .unwrap_or(Constant::Top);
                             state.set_variable(dst.clone(), value);
@@ -383,7 +381,7 @@ impl<'r, 'c> fixed_point::FixedPointAnalysis<'r, Constants, ir::Constant>
                 }
                 ir::Operation::Call(call) => {
                     if let Some(variables_written) = call.variables_written() {
-                        variables_written.into_iter().for_each(|variable| {
+                        variables_written.iter().for_each(|variable| {
                             state.set_variable(variable.clone(), Constant::Top)
                         });
                     } else {
