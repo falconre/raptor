@@ -12,10 +12,7 @@ pub struct Interval {
 
 impl Interval {
     pub fn new(lo: Value, hi: Value) -> Interval {
-        Interval {
-            lo: lo.clone(),
-            hi: hi.clone(),
-        }
+        Interval { lo, hi }
     }
 
     pub fn new_top(bits: usize) -> Interval {
@@ -93,7 +90,7 @@ impl Interval {
             Value::Bottom(_) => other.hi().clone(),
         };
 
-        Ok(Interval { lo: lo, hi: hi })
+        Ok(Interval { lo, hi })
     }
 
     pub fn binop<F>(&self, rhs: &Interval, f: F) -> Result<Interval>
@@ -101,16 +98,14 @@ impl Interval {
         F: Clone + Fn(&ir::Constant, &ir::Constant) -> Result<ir::Constant>,
     {
         let lo = self.lo().binop(rhs.lo(), f.clone())?;
-        let hi = self.hi().binop(rhs.hi(), f.clone())?;
+        let hi = self.hi().binop(rhs.hi(), f)?;
         Ok(Interval::new(lo, hi))
     }
 
     pub fn add(&self, rhs: &Interval) -> Result<Interval> {
         let lo = self.lo().binop(rhs.lo(), |l, r| Ok(l.add(r)?))?;
         let hi = self.hi().binop(rhs.hi(), |l, r| Ok(l.add(r)?))?;
-        if lo.sign_overflow(self.lo())? || hi.sign_overflow(self.hi())? {
-            Ok(Interval::new_top(self.bits()))
-        } else if hi.value_ltu(&lo)? {
+        if lo.sign_overflow(self.lo())? || hi.sign_overflow(self.hi())? || hi.value_ltu(&lo)? {
             Ok(Interval::new_top(self.bits()))
         } else {
             Ok(Interval::new(lo, hi))
@@ -121,9 +116,7 @@ impl Interval {
         // Find the lowest value of the two
         let lo = self.lo().binop(rhs.hi(), |l, r| Ok(l.sub(r)?))?;
         let hi = self.hi().binop(rhs.lo(), |l, r| Ok(l.sub(r)?))?;
-        if lo.sign_overflow(self.lo())? || hi.sign_overflow(self.hi())? {
-            Ok(Interval::new_top(self.bits()))
-        } else if hi.value_ltu(&lo)? {
+        if lo.sign_overflow(self.lo())? || hi.sign_overflow(self.hi())? || hi.value_ltu(&lo)? {
             Ok(Interval::new_top(self.bits()))
         } else {
             Ok(Interval::new(lo, hi))
@@ -134,9 +127,7 @@ impl Interval {
         let lo = self.lo().binop(rhs.lo(), |l, r| Ok(l.mul(r)?))?;
         let hi = self.hi().binop(rhs.hi(), |l, r| Ok(l.mul(r)?))?;
 
-        if lo.sign_overflow(self.lo())? || hi.sign_overflow(self.hi())? {
-            Ok(Interval::new_top(self.bits()))
-        } else if hi.value_ltu(&lo)? {
+        if lo.sign_overflow(self.lo())? || hi.sign_overflow(self.hi())? || hi.value_ltu(&lo)? {
             Ok(Interval::new_top(self.bits()))
         } else {
             Ok(Interval::new(lo, hi))

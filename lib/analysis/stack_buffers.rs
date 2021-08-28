@@ -7,8 +7,8 @@ use std::cmp::{Ordering, PartialOrd};
 use std::collections::HashMap;
 use std::fmt;
 
-pub fn stack_buffers<'f>(
-    function: &'f ir::Function<ir::Constant>,
+pub fn stack_buffers(
+    function: &ir::Function<ir::Constant>,
 ) -> Result<HashMap<ir::ProgramLocation, StackBuffers>> {
     let stack_buffers_analysis = StackBufferAnalysis {};
     let stack_buffers = fixed_point::fixed_point_forward(&stack_buffers_analysis, function)?;
@@ -26,9 +26,7 @@ pub struct StackBuffer {
 
 impl StackBuffer {
     pub fn new(stack_variable: ir::StackVariable) -> StackBuffer {
-        StackBuffer {
-            stack_variable: stack_variable,
-        }
+        StackBuffer { stack_variable }
     }
 
     pub fn stack_variable(&self) -> &ir::StackVariable {
@@ -69,17 +67,15 @@ impl LatticedValue for StackBuffer {
     }
 }
 
-impl Into<ir::StackVariable> for StackBuffer {
-    fn into(self) -> ir::StackVariable {
-        self.stack_variable
+impl From<StackBuffer> for ir::StackVariable {
+    fn from(stack_buffer: StackBuffer) -> ir::StackVariable {
+        stack_buffer.stack_variable
     }
 }
 
 impl From<ir::StackVariable> for StackBuffer {
     fn from(stack_variable: ir::StackVariable) -> StackBuffer {
-        StackBuffer {
-            stack_variable: stack_variable,
-        }
+        StackBuffer { stack_variable }
     }
 }
 
@@ -132,7 +128,7 @@ impl StackBuffers {
                     .latticed_variables
                     .variable(variable)
                     .cloned()
-                    .unwrap_or(Lattice::Top(variable.bits())),
+                    .unwrap_or_else(|| Lattice::Top(variable.bits())),
                 ir::LValue::Dereference(dereference) => Lattice::Top(dereference.bits()),
             },
             ir::Expression::Add(lhs, rhs)
@@ -162,6 +158,12 @@ impl StackBuffers {
 impl PartialOrd for StackBuffers {
     fn partial_cmp(&self, rhs: &StackBuffers) -> Option<Ordering> {
         self.latticed_variables.partial_cmp(&rhs.latticed_variables)
+    }
+}
+
+impl Default for StackBuffers {
+    fn default() -> StackBuffers {
+        StackBuffers::new()
     }
 }
 
@@ -210,7 +212,7 @@ impl<'f> fixed_point::FixedPointAnalysis<'f, StackBuffers, ir::Constant> for Sta
                         stack_buffers.top();
                     }
                 }
-                ir::Operation::Store { .. } | ir::Operation::Nop => {}
+                ir::Operation::Store { .. } | ir::Operation::Nop(_) => {}
                 ir::Operation::Branch { .. } | ir::Operation::Return(_) => {
                     stack_buffers.top();
                 }

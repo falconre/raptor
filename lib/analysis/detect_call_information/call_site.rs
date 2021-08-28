@@ -12,8 +12,8 @@ impl<'f> CallSite<'f> {
         set_return_address: Vec<ir::RefFunctionLocation<'f, ir::Constant>>,
     ) -> CallSite<'f> {
         CallSite {
-            branch: branch,
-            set_return_address: set_return_address,
+            branch,
+            set_return_address,
         }
     }
 

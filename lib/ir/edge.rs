@@ -33,7 +33,7 @@ impl<V: Value> Edge<V> {
         self.condition.as_ref()
     }
     pub fn comment(&self) -> Option<&str> {
-        self.comment.as_ref().map(|s| s.as_str())
+        self.comment.as_deref()
     }
 }
 

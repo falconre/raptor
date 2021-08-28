@@ -19,8 +19,7 @@ pub fn jump_table_analysis(
     let states: HashMap<ir::ProgramLocation, State> =
         fixed_point::fixed_point_forward(&jump_table_analysis, function)?;
 
-    let states =
-        fixed_point::incoming_results(&jump_table_analysis, function, states, || State::new())?;
+    let states = fixed_point::incoming_results(&jump_table_analysis, function, states, State::new)?;
 
     let mut jump_tables = Vec::new();
 
@@ -79,10 +78,7 @@ pub struct JumpTable {
 
 impl JumpTable {
     pub fn new(location: ir::ProgramLocation, entries: Vec<JumpTableEntry>) -> JumpTable {
-        JumpTable {
-            location: location,
-            entries: entries,
-        }
+        JumpTable { location, entries }
     }
 
     /// Get the program location of the branch for the jump table
@@ -103,10 +99,7 @@ pub struct JumpTableEntry {
 
 impl JumpTableEntry {
     pub fn new(address: u64, condition: il::Expression) -> JumpTableEntry {
-        JumpTableEntry {
-            address: address,
-            condition: condition,
-        }
+        JumpTableEntry { address, condition }
     }
 
     /// Get the target address for the jump table
@@ -131,13 +124,13 @@ impl<'j> JumpTableAnalysis<'j> {
         backing: &'j backing::Memory,
     ) -> JumpTableAnalysis<'j> {
         JumpTableAnalysis {
-            strided_intervals: strided_intervals,
-            backing: backing,
+            strided_intervals,
+            backing,
         }
     }
 
     fn backing(&self) -> &backing::Memory {
-        &self.backing
+        self.backing
     }
 
     /// Given a KSet of addresses, load those from the backing.
@@ -202,7 +195,7 @@ impl State {
                 .variables
                 .get(variable)
                 .map(|k| k.join(kset))
-                .unwrap_or(kset.clone());
+                .unwrap_or_else(|| kset.clone());
             self.variables.insert(variable.clone(), kset);
         }
         Ok(self)
@@ -227,8 +220,8 @@ impl State {
             ir::Expression::LValue(lvalue) => match lvalue.as_ref() {
                 ir::LValue::Variable(variable) => self
                     .get(variable)
-                    .map(|v| v.clone())
-                    .unwrap_or(KSet::new_top(variable.bits())),
+                    .cloned()
+                    .unwrap_or_else(|| KSet::new_top(variable.bits())),
                 ir::LValue::Dereference(dereference) => KSet::new_top(dereference.bits()),
             },
             ir::Expression::RValue(rvalue) => match rvalue.as_ref() {
@@ -294,8 +287,8 @@ impl PartialOrd for State {
             }
         }
 
-        for (variable, _) in rhs.variables() {
-            if self.variables().get(&variable).is_none() {
+        for variable in rhs.variables().keys() {
+            if self.variables().get(variable).is_none() {
                 if order == Ordering::Greater {
                     return None;
                 } else {
@@ -314,7 +307,7 @@ impl<'f, 'j> fixed_point::FixedPointAnalysis<'f, State, ir::Constant> for JumpTa
         location: &ir::RefProgramLocation<ir::Constant>,
         state: Option<State>,
     ) -> Result<State> {
-        let mut state = state.unwrap_or(State::new());
+        let mut state = state.unwrap_or_else(State::new);
 
         match location.function_location() {
             ir::RefFunctionLocation::Instruction(_, instruction) => {
@@ -340,7 +333,7 @@ impl<'f, 'j> fixed_point::FixedPointAnalysis<'f, State, ir::Constant> for JumpTa
 
                         state.set(dst.clone(), self.load_kset(&index, dst.bits())?);
                     }
-                    ir::Operation::Store { .. } | ir::Operation::Nop => {}
+                    ir::Operation::Store { .. } | ir::Operation::Nop(_) => {}
                 }
             }
             ir::RefFunctionLocation::Edge(_) | ir::RefFunctionLocation::EmptyBlock(_) => {}

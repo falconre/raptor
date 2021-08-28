@@ -14,9 +14,9 @@ pub struct Instruction<V: Value> {
 impl<V: Value> Instruction<V> {
     pub fn new(index: usize, operation: Operation<V>, address: Option<u64>) -> Instruction<V> {
         Instruction {
-            index: index,
-            operation: operation,
-            address: address,
+            index,
+            operation,
+            address,
             comment: None,
         }
     }
@@ -47,11 +47,11 @@ impl<V: Value> Instruction<V> {
     }
 
     pub fn address(&self) -> Option<u64> {
-        self.address.clone()
+        self.address
     }
 
     pub fn comment(&self) -> Option<&str> {
-        self.comment.as_ref().map(|comment| comment.as_str())
+        self.comment.as_deref()
     }
 
     pub fn set_comment(&mut self, comment: Option<String>) {
@@ -84,7 +84,7 @@ impl<V: Value> fmt::Display for Instruction<V> {
         let comment = self
             .comment()
             .map(|comment| format!(" // {}", comment))
-            .unwrap_or(String::new());
+            .unwrap_or_default();
 
         match self.address() {
             Some(address) => write!(

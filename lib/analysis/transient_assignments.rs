@@ -11,19 +11,19 @@ use std::collections::HashMap;
 
 /// Returns a HashSet at each location. If a variable is present in that
 /// HashSet, then it is transient at that point in the program.
-pub fn transient_assignments<'f, V: ir::Value>(
-    function: &'f ir::Function<V>,
+pub fn transient_assignments<V: ir::Value>(
+    function: &ir::Function<V>,
 ) -> Result<HashMap<ir::ProgramLocation, TransientAssignments>> {
     let transient_assignment_analysis = TransientAssignmentAnalysis {};
 
     let result = fixed_point_forward(&transient_assignment_analysis, function)?;
 
-    Ok(incoming_results(
+    incoming_results(
         &transient_assignment_analysis,
         function,
         result,
-        || TransientAssignments::new(),
-    )?)
+        TransientAssignments::new,
+    )
 }
 
 #[allow(dead_code)]
@@ -109,7 +109,7 @@ impl TransientAssignmentChain {
     pub fn new(assignment: TransientAssignment) -> TransientAssignmentChain {
         TransientAssignmentChain {
             chain: Vec::new(),
-            assignment: assignment,
+            assignment,
         }
     }
 
@@ -137,7 +137,7 @@ impl TransientAssignmentChain {
 
         TransientAssignmentChain {
             assignment: self.assignment.join(&other.assignment),
-            chain: chain,
+            chain,
         }
     }
 
@@ -180,11 +180,11 @@ impl TransientAssignments {
         match expression {
             ir::Expression::LValue(lvalue) => match lvalue.as_ref() {
                 ir::LValue::Variable(variable) => {
-                    self.chains.get(variable).map(|v| v.clone()).unwrap_or(
+                    self.chains.get(variable).cloned().unwrap_or_else(|| {
                         TransientAssignmentChain::new(TransientAssignment::Variable(
                             variable.clone(),
-                        )),
-                    )
+                        ))
+                    })
                 }
                 ir::LValue::Dereference(_) => {
                     TransientAssignmentChain::new(TransientAssignment::Top)
@@ -198,8 +198,8 @@ impl TransientAssignments {
         for (variable, tac) in &other.chains {
             self.chains
                 .entry(variable.clone())
-                .and_modify(|v| *v = v.join(&tac))
-                .or_insert(tac.clone());
+                .and_modify(|v| *v = v.join(tac))
+                .or_insert_with(|| tac.clone());
         }
         self
     }
@@ -219,49 +219,59 @@ impl TransientAssignments {
     }
 }
 
+impl Default for TransientAssignments {
+    fn default() -> TransientAssignments {
+        TransientAssignments::new()
+    }
+}
+
 // This is copied essentially verbatim from Constants::PartialOrd, so if this
 // is wrong, go look there
 impl PartialOrd for TransientAssignments {
     fn partial_cmp(&self, other: &TransientAssignments) -> Option<Ordering> {
-        if self.chains.len() < other.chains.len() {
-            for (lv, lt) in self.chains.iter() {
-                if !other.chains.get(lv).map(|rt| lt <= rt).unwrap_or(false) {
-                    return None;
-                }
-            }
-            Some(Ordering::Less)
-        } else if self.chains.len() > other.chains.len() {
-            for (lv, lt) in other.chains.iter() {
-                if !self.chains.get(lv).map(|rt| lt <= rt).unwrap_or(false) {
-                    return None;
-                }
-            }
-            Some(Ordering::Greater)
-        } else {
-            let mut order = Ordering::Equal;
-            for (lv, lt) in &self.chains {
-                match other.chains.get(lv) {
-                    Some(rt) => {
-                        if lt < rt {
-                            if order <= Ordering::Equal {
-                                order = Ordering::Less;
-                            } else {
-                                return None;
-                            }
-                        } else if lt > rt {
-                            if order >= Ordering::Equal {
-                                order = Ordering::Greater;
-                            } else {
-                                return None;
-                            }
-                        }
-                    }
-                    None => {
+        match self.chains.len().cmp(&other.chains.len()) {
+            Ordering::Less => {
+                for (lv, lt) in self.chains.iter() {
+                    if !other.chains.get(lv).map(|rt| lt <= rt).unwrap_or(false) {
                         return None;
                     }
                 }
+                Some(Ordering::Less)
             }
-            Some(order)
+            Ordering::Greater => {
+                for (lv, lt) in other.chains.iter() {
+                    if !self.chains.get(lv).map(|rt| lt <= rt).unwrap_or(false) {
+                        return None;
+                    }
+                }
+                Some(Ordering::Greater)
+            }
+            Ordering::Equal => {
+                let mut order = Ordering::Equal;
+                for (lv, lt) in &self.chains {
+                    match other.chains.get(lv) {
+                        Some(rt) => {
+                            if lt < rt {
+                                if order <= Ordering::Equal {
+                                    order = Ordering::Less;
+                                } else {
+                                    return None;
+                                }
+                            } else if lt > rt {
+                                if order >= Ordering::Equal {
+                                    order = Ordering::Greater;
+                                } else {
+                                    return None;
+                                }
+                            }
+                        }
+                        None => {
+                            return None;
+                        }
+                    }
+                }
+                Some(order)
+            }
         }
     }
 }
@@ -296,9 +306,8 @@ impl<'f, V: 'f + ir::Value> FixedPointAnalysis<'f, TransientAssignments, V>
                 ir::Operation::Call(call) => {
                     if let Some(arguments) = call.arguments() {
                         arguments
-                            .into_iter()
-                            .filter(|argument| argument.variable().is_some())
-                            .map(|argument| argument.variable().unwrap())
+                            .iter()
+                            .filter_map(|argument| argument.variable())
                             .for_each(|argument| {
                                 state.set(argument.clone(), TransientAssignmentChain::new_top())
                             });
@@ -321,7 +330,7 @@ impl<'f, V: 'f + ir::Value> FixedPointAnalysis<'f, TransientAssignments, V>
                     }
                     state
                 }
-                ir::Operation::Store { .. } | ir::Operation::Return(_) | ir::Operation::Nop => {
+                ir::Operation::Store { .. } | ir::Operation::Return(_) | ir::Operation::Nop(_) => {
                     state
                 }
             },

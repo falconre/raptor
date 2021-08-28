@@ -9,9 +9,7 @@ pub struct Dereference<V: Value> {
 
 impl<V: Value> Dereference<V> {
     pub fn new(expression: Expression<V>) -> Dereference<V> {
-        Dereference {
-            expression: expression,
-        }
+        Dereference { expression }
     }
 
     pub fn bits(&self) -> usize {
@@ -25,15 +23,15 @@ impl<V: Value> Dereference<V> {
     }
 }
 
-impl<V: Value> Into<LValue<V>> for Dereference<V> {
-    fn into(self) -> LValue<V> {
-        LValue::Dereference(self)
+impl<V: Value> From<Dereference<V>> for LValue<V> {
+    fn from(dereference: Dereference<V>) -> LValue<V> {
+        LValue::Dereference(dereference)
     }
 }
 
-impl<V: Value> Into<Expression<V>> for Dereference<V> {
-    fn into(self) -> Expression<V> {
-        Expression::LValue(Box::new(self.into()))
+impl<V: Value> From<Dereference<V>> for Expression<V> {
+    fn from(dereference: Dereference<V>) -> Expression<V> {
+        Expression::LValue(Box::new(dereference.into()))
     }
 }
 

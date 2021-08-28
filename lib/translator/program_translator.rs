@@ -5,7 +5,7 @@ use falcon;
 use falcon::analysis::calling_convention::CallingConvention;
 use falcon::architecture::Architecture;
 use falcon::loader::{Elf, Loader, Symbol};
-use falcon::translator::TranslationMemory;
+use falcon::translator::{Options, TranslationMemory};
 use std::collections::HashMap;
 
 pub struct ProgramTranslator<'t> {
@@ -24,9 +24,9 @@ impl<'t> ProgramTranslator<'t> {
         loader: &'t dyn Loader,
     ) -> Result<ProgramTranslator<'t>> {
         let mut translator = ProgramTranslator {
-            architecture: architecture,
-            calling_convention: calling_convention,
-            loader: loader,
+            architecture,
+            calling_convention,
+            loader,
             backing: loader.memory()?,
             symbols: loader.symbols_map(),
         };
@@ -59,8 +59,8 @@ impl<'t> ProgramTranslator<'t> {
 
         // Find the plt section
         for section_header in elf.section_headers {
-            let name: &str = match elf.shdr_strtab.get(section_header.sh_name) {
-                Some(name) => name?,
+            let name: &str = match elf.shdr_strtab.get_at(section_header.sh_name) {
+                Some(name) => name,
                 None => continue,
             };
 
@@ -74,8 +74,11 @@ impl<'t> ProgramTranslator<'t> {
                 let plt_address = start + (i * 4);
 
                 // Translate the block for the plt entry
-                let btr = translator
-                    .translate_block(&self.backing().get_bytes(plt_address, 16), plt_address);
+                let btr = translator.translate_block(
+                    &self.backing().get_bytes(plt_address, 16),
+                    plt_address,
+                    &Options::default(),
+                );
 
                 let btr = match btr {
                     Ok(btr) => btr,
@@ -90,20 +93,17 @@ impl<'t> ProgramTranslator<'t> {
                     None => continue,
                 };
 
-                match instruction.operation() {
-                    ir::Operation::Load { index, .. } => {
-                        if index.all_constants() {
-                            let got_address = match ir::eval(index)?.value_u64() {
-                                Some(address) => address,
-                                None => continue,
-                            };
+                if let ir::Operation::Load { index, .. } = instruction.operation() {
+                    if index.all_constants() {
+                        let got_address = match ir::eval(index)?.value_u64() {
+                            Some(address) => address,
+                            None => continue,
+                        };
 
-                            if let Some(symbol) = self.symbol(got_address).cloned() {
-                                plt_symbols.push(Symbol::new(symbol.name(), plt_address));
-                            }
+                        if let Some(symbol) = self.symbol(got_address).cloned() {
+                            plt_symbols.push(Symbol::new(symbol.name(), plt_address));
                         }
                     }
-                    _ => {}
                 }
             }
         }

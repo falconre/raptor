@@ -3,15 +3,15 @@ use crate::error::*;
 use crate::ir;
 use std::collections::HashMap;
 
-pub fn variable_use_def<'f, V: ir::Value>(
-    function: &'f ir::Function<V>,
+pub fn variable_use_def<V: ir::Value>(
+    function: &ir::Function<V>,
 ) -> Result<HashMap<ir::ProgramLocation, HashMap<ir::Variable, LocationSet>>> {
     variable_use_def_ud(function, &use_def(function)?)
 }
 
 /// Given already computed use-def chains, compute usedef for each variable
-pub fn variable_use_def_ud<'f, V: ir::Value>(
-    function: &'f ir::Function<V>,
+pub fn variable_use_def_ud<V: ir::Value>(
+    function: &ir::Function<V>,
     ud: &HashMap<ir::ProgramLocation, LocationSet>,
 ) -> Result<HashMap<ir::ProgramLocation, HashMap<ir::Variable, LocationSet>>> {
     let mut result: HashMap<ir::ProgramLocation, HashMap<ir::Variable, LocationSet>> =
@@ -21,11 +21,11 @@ pub fn variable_use_def_ud<'f, V: ir::Value>(
         let variables = location
             .instruction()
             .map(|instruction| instruction.variables_read())
-            .unwrap_or(
+            .unwrap_or_else(|| {
                 location
                     .edge()
-                    .and_then(|edge| edge.condition().map(|c| c.variables())),
-            );
+                    .and_then(|edge| edge.condition().map(|c| c.variables()))
+            });
 
         let variables = match variables {
             Some(variables) => variables,

@@ -10,10 +10,7 @@ pub struct Reference<V: Value> {
 
 impl<V: Value> Reference<V> {
     pub fn new(expression: Expression<V>, bits: usize) -> Reference<V> {
-        Reference {
-            expression: expression,
-            bits: bits,
-        }
+        Reference { expression, bits }
     }
 
     pub fn expression(&self) -> &Expression<V> {
@@ -27,9 +24,9 @@ impl<V: Value> Reference<V> {
     }
 }
 
-impl<V: Value> Into<Expression<V>> for Reference<V> {
-    fn into(self) -> Expression<V> {
-        Expression::RValue(Box::new(RValue::Reference(self)))
+impl<V: Value> From<Reference<V>> for Expression<V> {
+    fn from(reference: Reference<V>) -> Expression<V> {
+        Expression::RValue(Box::new(RValue::Reference(reference)))
     }
 }
 

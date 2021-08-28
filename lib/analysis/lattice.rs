@@ -162,7 +162,7 @@ impl<V: PartialOrd + fmt::Debug> PartialOrd for LatticedVariables<V> {
             }
         }
 
-        for (variable, _) in &rhs.variables {
+        for variable in rhs.variables.keys() {
             if self.variables.get(variable).is_none() {
                 if order == Ordering::Greater {
                     println!("None 3 on {}", variable);
@@ -173,5 +173,10 @@ impl<V: PartialOrd + fmt::Debug> PartialOrd for LatticedVariables<V> {
         }
 
         Some(order)
+    }
+}
+impl<V: LatticedValue> Default for LatticedVariables<V> {
+    fn default() -> Self {
+        Self::new()
     }
 }

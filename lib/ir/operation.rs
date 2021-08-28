@@ -23,7 +23,7 @@ pub enum Operation<V: Value> {
     Call(Call<V>),
     Intrinsic(il::Intrinsic),
     Return(Option<Expression<V>>),
-    Nop,
+    Nop(Option<Box<Operation<V>>>),
 }
 
 impl<V: Value> Operation<V> {
@@ -45,50 +45,36 @@ impl<V: Value> Operation<V> {
                 target: Expression::from_il(target),
             },
             il::Operation::Intrinsic { intrinsic } => Operation::Intrinsic(intrinsic.clone()),
-            il::Operation::Nop => Operation::Nop,
+            il::Operation::Nop { placeholder } => Operation::Nop(
+                placeholder
+                    .as_ref()
+                    .map(|operation| Box::new(Operation::<Constant>::from_il(operation))),
+            ),
         }
     }
 
     pub fn is_assign(&self) -> bool {
-        match self {
-            Operation::Assign { .. } => true,
-            _ => false,
-        }
+        matches!(self, Operation::Call { .. })
     }
 
     pub fn is_load(&self) -> bool {
-        match self {
-            Operation::Load { .. } => true,
-            _ => false,
-        }
+        matches!(self, Operation::Load { .. })
     }
 
     pub fn is_return(&self) -> bool {
-        match self {
-            Operation::Return(_) => true,
-            _ => false,
-        }
+        matches!(self, Operation::Return(_))
     }
 
     pub fn is_nop(&self) -> bool {
-        match self {
-            Operation::Nop => true,
-            _ => false,
-        }
+        matches!(self, Operation::Nop(_))
     }
 
     pub fn is_branch(&self) -> bool {
-        match self {
-            Operation::Branch { .. } => true,
-            _ => false,
-        }
+        matches!(self, Operation::Branch { .. })
     }
 
     pub fn is_call(&self) -> bool {
-        match self {
-            Operation::Call(_) => true,
-            _ => false,
-        }
+        matches!(self, Operation::Call(_))
     }
 
     pub fn src(&self) -> Option<&Expression<V>> {
@@ -144,8 +130,8 @@ impl<V: Value> Operation<V> {
                 .target()
                 .expression()
                 .map(|e| vec![e])
-                .unwrap_or(Vec::new()),
-            Operation::Intrinsic(_) | Operation::Return(_) | Operation::Nop => Vec::new(),
+                .unwrap_or_default(),
+            Operation::Intrinsic(_) | Operation::Return(_) | Operation::Nop(_) => Vec::new(),
         }
     }
 
@@ -159,8 +145,8 @@ impl<V: Value> Operation<V> {
                 .target_mut()
                 .expression_mut()
                 .map(|e| vec![e])
-                .unwrap_or(Vec::new()),
-            Operation::Intrinsic(_) | Operation::Return(_) | Operation::Nop => Vec::new(),
+                .unwrap_or_default(),
+            Operation::Intrinsic(_) | Operation::Return(_) | Operation::Nop(_) => Vec::new(),
         }
     }
 
@@ -169,7 +155,7 @@ impl<V: Value> Operation<V> {
             Operation::Assign { dst, .. } | Operation::Load { dst, .. } => Some(vec![dst]),
             Operation::Call(call) => call.variables_written().map(|vw| vw.iter().collect()),
             Operation::Branch { .. } | Operation::Intrinsic(_) => None,
-            Operation::Store { .. } | Operation::Return(_) | Operation::Nop => Some(Vec::new()),
+            Operation::Store { .. } | Operation::Return(_) | Operation::Nop(_) => Some(Vec::new()),
         }
     }
 
@@ -187,7 +173,7 @@ impl<V: Value> Operation<V> {
             Operation::Call(call) => call.variables_read(),
             Operation::Branch { .. } | Operation::Intrinsic(_) => None,
             Operation::Return(result) => result.as_ref().map(|e| e.variables()),
-            Operation::Nop => Some(Vec::new()),
+            Operation::Nop(_) => Some(Vec::new()),
         }
     }
 
@@ -213,7 +199,7 @@ impl<V: Value> fmt::Display for Operation<V> {
                 Some(result) => write!(f, "return {}", result),
                 None => write!(f, "return ???"),
             },
-            Operation::Nop => write!(f, "nop"),
+            Operation::Nop(_) => write!(f, "nop"),
         }
     }
 }

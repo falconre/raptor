@@ -89,8 +89,8 @@ impl<'r, V: Value> RefProgramLocation<'r, V> {
         function_location: RefFunctionLocation<'r, V>,
     ) -> RefProgramLocation<'r, V> {
         RefProgramLocation {
-            function: function,
-            function_location: function_location,
+            function,
+            function_location,
         }
     }
 
@@ -152,16 +152,14 @@ impl<'r, V: Value> RefProgramLocation<'r, V> {
         }
 
         if let Some(function) = function {
-            match RefFunctionLocation::from_address(function, address) {
-                Some(rfl) => return Some(RefProgramLocation::new(function, rfl)),
-                None => {}
+            if let Some(rfl) = RefFunctionLocation::from_address(function, address) {
+                return Some(RefProgramLocation::new(function, rfl));
             }
         }
 
         for function in program.functions() {
-            match RefFunctionLocation::from_address(function, address) {
-                Some(rfl) => return Some(RefProgramLocation::new(function, rfl)),
-                None => {}
+            if let Some(rfl) = RefFunctionLocation::from_address(function, address) {
+                return Some(RefProgramLocation::new(function, rfl));
             }
         }
 
@@ -173,13 +171,13 @@ impl<'r, V: Value> RefProgramLocation<'r, V> {
             RefFunctionLocation::Instruction(block, instruction) => {
                 let instructions = block.instructions();
                 for i in 0..instructions.len() {
-                    if instructions[i].index() == instruction.index() {
-                        if i + 1 < block.instructions().len() {
-                            return vec![RefProgramLocation::new(
-                                self.function(),
-                                RefFunctionLocation::Instruction(block, &instructions[i + 1]),
-                            )];
-                        }
+                    if instructions[i].index() == instruction.index()
+                        && i + 1 < block.instructions().len()
+                    {
+                        return vec![RefProgramLocation::new(
+                            self.function(),
+                            RefFunctionLocation::Instruction(block, &instructions[i + 1]),
+                        )];
                     }
                 }
 
@@ -229,13 +227,11 @@ impl<'r, V: Value> RefProgramLocation<'r, V> {
             RefFunctionLocation::Instruction(block, instruction) => {
                 let instructions = block.instructions();
                 for i in (0..instructions.len()).rev() {
-                    if instructions[i].index() == instruction.index() {
-                        if i > 0 {
-                            return vec![RefProgramLocation::new(
-                                self.function(),
-                                RefFunctionLocation::Instruction(block, &instructions[i - 1]),
-                            )];
-                        }
+                    if instructions[i].index() == instruction.index() && i > 0 {
+                        return vec![RefProgramLocation::new(
+                            self.function(),
+                            RefFunctionLocation::Instruction(block, &instructions[i - 1]),
+                        )];
                     }
                 }
 
@@ -284,7 +280,7 @@ impl<'r, V: Value> RefProgramLocation<'r, V> {
 
         let mut queue = VecDeque::new();
         queue.push_back(self.clone());
-        while queue.len() > 0 {
+        while !queue.is_empty() {
             let location = queue.pop_front().unwrap();
 
             for location in location.forward() {
@@ -419,8 +415,8 @@ pub struct ProgramLocation {
 impl ProgramLocation {
     pub fn new(function_index: usize, function_location: FunctionLocation) -> ProgramLocation {
         ProgramLocation {
-            function_index: function_index,
-            function_location: function_location,
+            function_index,
+            function_location,
         }
     }
 

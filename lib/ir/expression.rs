@@ -173,10 +173,7 @@ impl<V: Value> Expression<V> {
     pub fn all_values(&self) -> bool {
         match self {
             Expression::LValue(_) => false,
-            Expression::RValue(rvalue) => match rvalue.as_ref() {
-                RValue::Value(_) => true,
-                _ => false,
-            },
+            Expression::RValue(rvalue) => matches!(rvalue.as_ref(), RValue::Value(_)),
             Expression::Add(lhs, rhs)
             | Expression::Sub(lhs, rhs)
             | Expression::Mul(lhs, rhs)
@@ -425,6 +422,7 @@ impl<V: Value> Expression<V> {
             .and_then(|reference| reference.expression().stack_variable())
     }
 
+    #[allow(clippy::should_implement_trait)]
     pub fn add(lhs: Expression<V>, rhs: Expression<V>) -> Result<Expression<V>> {
         if lhs.bits() != rhs.bits() {
             return Err(ErrorKind::Sort.into());
@@ -432,6 +430,7 @@ impl<V: Value> Expression<V> {
         Ok(Expression::Add(Box::new(lhs), Box::new(rhs)))
     }
 
+    #[allow(clippy::should_implement_trait)]
     pub fn sub(lhs: Expression<V>, rhs: Expression<V>) -> Result<Expression<V>> {
         if lhs.bits() != rhs.bits() {
             return Err(ErrorKind::Sort.into());
@@ -439,6 +438,7 @@ impl<V: Value> Expression<V> {
         Ok(Expression::Sub(Box::new(lhs), Box::new(rhs)))
     }
 
+    #[allow(clippy::should_implement_trait)]
     pub fn mul(lhs: Expression<V>, rhs: Expression<V>) -> Result<Expression<V>> {
         if lhs.bits() != rhs.bits() {
             return Err(ErrorKind::Sort.into());
@@ -495,6 +495,7 @@ impl<V: Value> Expression<V> {
         Ok(Expression::Xor(Box::new(lhs), Box::new(rhs)))
     }
 
+    #[allow(clippy::should_implement_trait)]
     pub fn shl(lhs: Expression<V>, rhs: Expression<V>) -> Result<Expression<V>> {
         if lhs.bits() != rhs.bits() {
             return Err(ErrorKind::Sort.into());
@@ -502,6 +503,7 @@ impl<V: Value> Expression<V> {
         Ok(Expression::Shl(Box::new(lhs), Box::new(rhs)))
     }
 
+    #[allow(clippy::should_implement_trait)]
     pub fn shr(lhs: Expression<V>, rhs: Expression<V>) -> Result<Expression<V>> {
         if lhs.bits() != rhs.bits() {
             return Err(ErrorKind::Sort.into());
@@ -541,10 +543,10 @@ impl<V: Value> Expression<V> {
         if lhs.bits() != rhs.bits() {
             return Err(ErrorKind::Sort.into());
         }
-        Ok(Expression::or(
+        Expression::or(
             Expression::cmpeq(lhs.clone(), rhs.clone())?,
             Expression::cmpltu(lhs, rhs)?,
-        )?)
+        )
     }
 
     pub fn trun(bits: usize, rhs: Expression<V>) -> Result<Expression<V>> {

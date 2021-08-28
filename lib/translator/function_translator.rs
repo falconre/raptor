@@ -24,8 +24,8 @@ impl<'t> FunctionTranslator<'t> {
         }
 
         FunctionTranslator {
-            translation_information: translation_information,
-            modules: modules,
+            translation_information,
+            modules,
         }
     }
 
@@ -54,7 +54,7 @@ impl<'t> FunctionTranslator<'t> {
                     .instruction(instruction.index())
                     .expect("Failed to get instruction");
                 let rfl = ir::RefFunctionLocation::Instruction(ref_block, ref_instruction);
-                let rpl = ir::RefProgramLocation::new(&function, rfl);
+                let rpl = ir::RefProgramLocation::new(function, rfl);
                 let spo = match stack_pointer_offsets.get(&rpl.into()) {
                     Some(spo) => spo,
                     None => continue,
@@ -72,7 +72,7 @@ impl<'t> FunctionTranslator<'t> {
                     | ir::Operation::Call { .. }
                     | ir::Operation::Intrinsic { .. }
                     | ir::Operation::Return(_)
-                    | ir::Operation::Nop => {}
+                    | ir::Operation::Nop(_) => {}
                 }
             }
         }
@@ -136,7 +136,7 @@ impl<'t> FunctionTranslator<'t> {
         function: &ir::Function<ir::Constant>,
     ) -> Result<ir::Function<ir::Constant>> {
         let mut new_function = function.clone();
-        let constants = analysis::constants::constants(&function, Some(self.ti().backing()))?;
+        let constants = analysis::constants::constants(function, Some(self.ti().backing()))?;
 
         for ref mut block in new_function.blocks_mut() {
             let ref_block = function.block(block.index()).expect("Failed to get block");
@@ -145,7 +145,7 @@ impl<'t> FunctionTranslator<'t> {
                     .instruction(instruction.index())
                     .expect("Failed to get instruction");
                 let rfl = ir::RefFunctionLocation::Instruction(ref_block, ref_instruction);
-                let rpl = ir::RefProgramLocation::new(&function, rfl);
+                let rpl = ir::RefProgramLocation::new(function, rfl);
                 let pl: ir::ProgramLocation = rpl.into();
 
                 match instruction.operation_mut() {
@@ -173,7 +173,7 @@ impl<'t> FunctionTranslator<'t> {
                             *expression = constants[&pl].reduce(expression)?;
                         }
                     }
-                    ir::Operation::Intrinsic { .. } | ir::Operation::Nop => {}
+                    ir::Operation::Intrinsic { .. } | ir::Operation::Nop(_) => {}
                 }
             }
         }
@@ -243,7 +243,8 @@ impl<'t> FunctionTranslator<'t> {
                         block_index,
                         instruction_index
                     ))?;
-                    *instruction.operation_mut() = ir::Operation::Nop;
+                    *instruction.operation_mut() =
+                        ir::Operation::Nop(Some(Box::new(instruction.operation().clone())));
                 }
 
                 new_function.add_transient_variable(variable.clone());
@@ -338,7 +339,7 @@ impl<'t> FunctionTranslator<'t> {
 
         let mut i = 0;
         loop {
-            i = i + 1;
+            i += 1;
             if i > 10 {
                 panic!("too many iterations");
             }
@@ -367,12 +368,13 @@ impl<'t> FunctionTranslator<'t> {
                 .collect::<Vec<JumpTable>>();
 
             // If we recovered any jump tables, we need to deal with those
-            if jump_tables.len() == 0 {
+            if jump_tables.is_empty() {
                 return Ok(function);
             }
 
+            let mut translator_options = falcon::translator::Options::new();
+
             // Create manual edges for the extended lifter
-            let mut manual_edges = Vec::new();
             for jump_table in &jump_tables {
                 let rpl = jump_table.location().apply(&function)?;
                 let branch_address = rpl.address().ok_or(
@@ -383,11 +385,13 @@ impl<'t> FunctionTranslator<'t> {
                 for entry in jump_table.entries() {
                     if let Some(permissions) = self.ti().backing().permissions(entry.address()) {
                         if permissions.contains(MemoryPermissions::EXECUTE) {
-                            manual_edges.push((
-                                branch_address,
-                                entry.address(),
-                                Some(entry.condition().clone()),
-                            ));
+                            translator_options.add_manual_edge(
+                                falcon::translator::ManualEdge::new(
+                                    branch_address,
+                                    entry.address(),
+                                    Some(entry.condition().clone()),
+                                ),
+                            );
                         }
                     }
                 }
@@ -401,7 +405,7 @@ impl<'t> FunctionTranslator<'t> {
                 .translate_function_extended(
                     self.ti().backing(),
                     function.address(),
-                    manual_edges,
+                    &translator_options,
                 )?;
 
             // Give it the same index as the original function

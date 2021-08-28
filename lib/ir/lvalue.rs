@@ -40,9 +40,9 @@ impl<V: Value> LValue<V> {
     }
 }
 
-impl<V: Value> Into<Expression<V>> for LValue<V> {
-    fn into(self) -> Expression<V> {
-        Expression::LValue(Box::new(self))
+impl<V: Value> From<LValue<V>> for Expression<V> {
+    fn from(lvalue: LValue<V>) -> Expression<V> {
+        Expression::LValue(Box::new(lvalue))
     }
 }
 

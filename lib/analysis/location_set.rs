@@ -69,6 +69,12 @@ impl PartialOrd for LocationSet {
     }
 }
 
+impl Default for LocationSet {
+    fn default() -> LocationSet {
+        LocationSet::new()
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct RefLocationSet<'f, V: 'f + ir::Value> {
     locations: HashSet<ir::RefProgramLocation<'f, V>>,
@@ -108,9 +114,7 @@ impl<'f, V: ir::Value> PartialOrd for RefLocationSet<'f, V> {
             .locations
             .iter()
             .fold(Ordering::Equal, |order, location| {
-                if order == Ordering::Greater {
-                    Ordering::Greater
-                } else if !rhs.contains(location) {
+                if order == Ordering::Greater || !rhs.contains(location) {
                     Ordering::Greater
                 } else {
                     Ordering::Equal
@@ -127,5 +131,11 @@ impl<'f, V: ir::Value> PartialOrd for RefLocationSet<'f, V> {
             }
         }
         Some(order)
+    }
+}
+
+impl<'f, V: ir::Value> Default for RefLocationSet<'f, V> {
+    fn default() -> RefLocationSet<'f, V> {
+        RefLocationSet::new()
     }
 }

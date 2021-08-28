@@ -261,9 +261,7 @@ impl KSetValue {
     }
 
     pub fn ite(cond: &KSetValue, then: &KSetValue, else_: &KSetValue) -> Result<KSetValue> {
-        if cond.bits() != 1 {
-            return Err(ErrorKind::Sort.into());
-        } else if then.bits() != else_.bits() {
+        if cond.bits() != 1 || then.bits() != else_.bits() {
             return Err(ErrorKind::Sort.into());
         }
 

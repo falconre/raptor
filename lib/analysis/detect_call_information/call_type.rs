@@ -26,8 +26,8 @@ impl CallType {
 
     pub fn new(return_type: ReturnType, stack_pointer: ir::Variable) -> CallType {
         CallType {
-            return_type: return_type,
-            stack_pointer: stack_pointer,
+            return_type,
+            stack_pointer,
         }
     }
 

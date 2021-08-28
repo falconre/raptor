@@ -1,6 +1,6 @@
 [package]
 name = "falcon-raptor"
-version = "0.4.10"
+version = "0.5.2"
 homepage = "https://github.com/falconre/raptor"
 repository = "https://github.com/falconre/raptor"
 description = "Higher-level semantics over Falcon IL"
@@ -11,9 +11,9 @@ edition = "2018"
 
 [dependencies]
 error-chain = "0.12"
-falcon = "0.4.12"
-falcon-z3 = "0.4.12"
-goblin = "0.2"
+falcon = "0.5.2"
+falcon-z3 = "0.5.2"
+goblin = "0.4"
 lazy_static = "1.0"
 log = "0.4"
 serde = {version="1.0", features=["derive"]}

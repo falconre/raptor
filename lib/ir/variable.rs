@@ -47,9 +47,9 @@ impl Variable {
     }
 }
 
-impl<V: Value> Into<Expression<V>> for Variable {
-    fn into(self) -> Expression<V> {
-        Expression::LValue(Box::new(LValue::Variable(self)))
+impl<V: Value> From<Variable> for Expression<V> {
+    fn from(variable: Variable) -> Expression<V> {
+        Expression::LValue(Box::new(LValue::Variable(variable)))
     }
 }
 

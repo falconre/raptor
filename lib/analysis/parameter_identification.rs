@@ -27,10 +27,10 @@ pub fn parameter_identification<V: ir::Value>(
         let variables_read = rpl
             .instruction()
             .map(|instruction| variables_read(instruction.operation()))
-            .unwrap_or(
+            .unwrap_or_else(|| {
                 rpl.edge()
-                    .and_then(|edge| edge.condition().map(|c| get_variables(c))),
-            );
+                    .and_then(|edge| edge.condition().map(|c| get_variables(c)))
+            });
 
         let variables_read = match variables_read {
             Some(variables_read) => variables_read,
@@ -73,14 +73,14 @@ fn variables_read<V: ir::Value>(o: &ir::Operation<V>) -> Option<Vec<&ir::Variabl
         ir::Operation::Load { index, .. } => Some(get_variables(index)),
         ir::Operation::Branch { target } => Some(get_variables(target)),
         ir::Operation::Call(call) => call.arguments().map(|arguments| {
-            arguments.into_iter().fold(Vec::new(), |mut v, argument| {
+            arguments.iter().fold(Vec::new(), |mut v, argument| {
                 v.append(&mut get_variables(argument));
                 v
             })
         }),
         ir::Operation::Intrinsic(_) => None,
         ir::Operation::Return(result) => result.as_ref().map(|e| get_variables(e)),
-        ir::Operation::Nop => Some(Vec::new()),
+        ir::Operation::Nop(_) => Some(Vec::new()),
     }
 }
 

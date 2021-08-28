@@ -27,9 +27,9 @@ impl<V: Value> ControlFlowGraph<V> {
             .try_for_each(|edge| graph.insert_edge(Edge::<Constant>::from_il(edge)))?;
 
         Ok(ControlFlowGraph {
-            graph: graph,
-            entry: control_flow_graph.entry().clone(),
-            exit: control_flow_graph.exit().clone(),
+            graph,
+            entry: control_flow_graph.entry(),
+            exit: control_flow_graph.exit(),
         })
     }
 
@@ -40,10 +40,10 @@ impl<V: Value> ControlFlowGraph<V> {
         &mut self.graph
     }
     pub fn entry(&self) -> Option<usize> {
-        self.entry.clone()
+        self.entry
     }
     pub fn exit(&self) -> Option<usize> {
-        self.exit.clone()
+        self.exit
     }
 
     pub fn block(&self, index: usize) -> Result<&Block<V>> {

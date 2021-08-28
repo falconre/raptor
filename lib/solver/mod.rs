@@ -19,9 +19,9 @@ fn return_solver_result(
 ) -> Result<Option<ir::Constant>> {
     Ok(match solver.check() {
         Check::Unsat | Check::Unknown => None,
-        Check::Sat => Model::new(&context, &solver)
-            .and_then(|model| model.get_const_interp(&ast))
-            .and_then(|constant_ast| constant_ast.get_numeral_decimal_string(&context))
+        Check::Sat => Model::new(context, solver)
+            .and_then(|model| model.get_const_interp(ast))
+            .and_then(|constant_ast| constant_ast.get_numeral_decimal_string(context))
             .and_then(|numeral_dec_str| {
                 ir::Constant::from_decimal_string(&numeral_dec_str, bits).ok()
             }),
@@ -36,9 +36,9 @@ fn return_optimize_result(
 ) -> Result<Option<ir::Constant>> {
     Ok(match optimize.check() {
         Check::Unsat | Check::Unknown => None,
-        Check::Sat => Model::new_optimize(&context, &optimize)
-            .and_then(|model| model.get_const_interp(&ast))
-            .and_then(|constant_ast| constant_ast.get_numeral_decimal_string(&context))
+        Check::Sat => Model::new_optimize(context, optimize)
+            .and_then(|model| model.get_const_interp(ast))
+            .and_then(|constant_ast| constant_ast.get_numeral_decimal_string(context))
             .and_then(|numeral_dec_str| {
                 ir::Constant::from_decimal_string(&numeral_dec_str, bits).ok()
             }),
@@ -54,7 +54,7 @@ fn solver_init(
     let one = context.mk_numeral(1, &sort)?;
 
     for constraint in constraints {
-        solver.assert(&context.eq(&one, &expression_to_ast(&context, constraint)?));
+        solver.assert(&context.eq(&one, &expression_to_ast(context, constraint)?));
     }
 
     Ok(())
@@ -69,7 +69,7 @@ fn optimize_init(
     let one = context.mk_numeral(1, &sort)?;
 
     for constraint in constraints {
-        optimize.assert(&context.eq(&one, &expression_to_ast(&context, constraint)?));
+        optimize.assert(&context.eq(&one, &expression_to_ast(context, constraint)?));
     }
 
     Ok(())
@@ -144,7 +144,7 @@ fn expression_to_ast(context: &Context, expression: &ir::Expression<ir::Constant
                     let big_uint = constant.value();
                     let sort = context.mk_bv_sort(8);
                     let bytes = big_uint.to_bytes_le();
-                    let mut v = if bytes.len() == 0 {
+                    let mut v = if bytes.is_empty() {
                         context.mk_numeral(0, &sort)?
                     } else {
                         context.mk_numeral(bytes[0] as u64, &sort)?
@@ -173,7 +173,7 @@ fn expression_to_ast(context: &Context, expression: &ir::Expression<ir::Constant
                     context.mk_var(stack_variable.name(), &sort)?
                 }
             },
-            ir::LValue::Dereference(_) => Err(ErrorKind::SolverDereference)?,
+            ir::LValue::Dereference(_) => return Err(ErrorKind::SolverDereference.into()),
         },
         ir::Expression::Add(ref lhs, ref rhs) => context.bvadd(
             &expression_to_ast(context, lhs)?,

@@ -17,7 +17,7 @@ pub struct KSet {
 
 impl KSet {
     pub fn new(k: usize, value: KSetValue) -> KSet {
-        KSet { k: k, value: value }
+        KSet { k, value }
     }
 
     pub fn new_top(bits: usize) -> KSet {
@@ -237,27 +237,29 @@ impl PartialOrd for KSet {
     fn partial_cmp(&self, other: &KSet) -> Option<Ordering> {
         let order = self.value().partial_cmp(other.value())?;
 
-        if self.k() < other.k() {
-            if order == Ordering::Greater {
-                None
-            } else {
-                Some(Ordering::Less)
+        match self.k().cmp(&other.k()) {
+            Ordering::Less => {
+                if order == Ordering::Greater {
+                    None
+                } else {
+                    Some(Ordering::Less)
+                }
             }
-        } else if self.k() > other.k() {
-            if order == Ordering::Less {
-                None
-            } else {
-                Some(Ordering::Greater)
+            Ordering::Greater => {
+                if order == Ordering::Less {
+                    None
+                } else {
+                    Some(Ordering::Greater)
+                }
             }
-        } else {
-            Some(order)
+            Ordering::Equal => Some(order),
         }
     }
 }
 
-impl<'e> Into<ir::Expression<KSet>> for &'e ir::Expression<ir::Constant> {
-    fn into(self) -> ir::Expression<KSet> {
-        match self {
+impl<'e> From<&'e ir::Expression<ir::Constant>> for ir::Expression<KSet> {
+    fn from(expression: &ir::Expression<ir::Constant>) -> ir::Expression<KSet> {
+        match expression {
             ir::Expression::LValue(lvalue) => match lvalue.as_ref() {
                 ir::LValue::Variable(variable) => variable.clone().into(),
                 ir::LValue::Dereference(dereference) => {

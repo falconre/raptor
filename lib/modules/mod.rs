@@ -43,3 +43,9 @@ impl Module for MipsT9 {
         self.pre_analysis_function(&mut function)
     }
 }
+
+impl Default for MipsT9 {
+    fn default() -> MipsT9 {
+        MipsT9::new()
+    }
+}

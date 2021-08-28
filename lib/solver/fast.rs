@@ -65,16 +65,13 @@ impl FastSolver {
         &self,
         expression: &ir::Expression<ir::Constant>,
     ) -> Result<Option<(ir::Variable, ir::Constant)>> {
-        match expression {
-            ir::Expression::Cmpeq(lhs, rhs) => {
-                if let Some(variable) = lhs.variable() {
-                    if rhs.is_constant() {
-                        let constant = ir::eval(rhs)?;
-                        return Ok(Some((variable.clone(), constant)));
-                    }
+        if let ir::Expression::Cmpeq(lhs, rhs) = expression {
+            if let Some(variable) = lhs.variable() {
+                if rhs.is_constant() {
+                    let constant = ir::eval(rhs)?;
+                    return Ok(Some((variable.clone(), constant)));
                 }
             }
-            _ => {}
         }
 
         Ok(None)
@@ -133,10 +130,8 @@ impl FastSolver {
                 self.variables.insert(variable, value);
             }
 
-            if next_queue.len() == queue_len {
-                if !variable_topped {
-                    break;
-                }
+            if next_queue.len() == queue_len && !variable_topped {
+                break;
             }
 
             while !next_queue.is_empty() {
@@ -145,5 +140,11 @@ impl FastSolver {
         }
 
         Ok(())
+    }
+}
+
+impl Default for FastSolver {
+    fn default() -> FastSolver {
+        FastSolver::new()
     }
 }

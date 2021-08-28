@@ -22,8 +22,8 @@ impl<'b> BlockState<'b> {
             self.variables.iter().try_fold(
                 expression.clone(),
                 |expression, (variable, tagged_constant)| {
-                    Ok(expression
-                        .replace_variable(&variable, &tagged_constant.constant().clone().into())?)
+                    expression
+                        .replace_variable(variable, &tagged_constant.constant().clone().into())
                 },
             );
 
@@ -95,5 +95,11 @@ impl<'b> BlockState<'b> {
 
     pub(crate) fn get<'v>(&self, variable: &'v ir::Variable) -> Option<&TaggedConstant<'b>> {
         self.variables.get(variable)
+    }
+}
+
+impl<'b> Default for BlockState<'b> {
+    fn default() -> BlockState<'b> {
+        BlockState::new()
     }
 }

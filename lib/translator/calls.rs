@@ -64,7 +64,7 @@ pub fn no_returns(function: &mut ir::Function<ir::Constant>) -> Result<()> {
                         .map(|edge| edge.tail())
                         .collect::<Vec<usize>>()
                 })
-                .unwrap_or(Vec::new());
+                .unwrap_or_default();
             edges_out.into_iter().for_each(|tail| {
                 function
                     .control_flow_graph_mut()
@@ -91,7 +91,7 @@ pub fn call_sites<'f>(
     );
 
     let (call_sites, return_sites) =
-        analysis::detect_call_information::detect_call_information(&function, &call_type)?;
+        analysis::detect_call_information::detect_call_information(function, &call_type)?;
 
     let mut new_function: ir::Function<ir::Constant> = function.clone();
 
@@ -291,7 +291,7 @@ pub fn apply_functions(
                 let arguments = get_argument_variables(
                     function_declaration.parameters(),
                     translation_information,
-                    &stack_pointer_offset,
+                    stack_pointer_offset,
                 )?;
 
                 if arguments.is_none() {
