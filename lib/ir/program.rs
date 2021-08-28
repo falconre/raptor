@@ -52,3 +52,9 @@ impl<V: Value> Program<V> {
         self.functions.insert(index, RC::new(function));
     }
 }
+
+impl<V: Value> Default for Program<V> {
+    fn default() -> Self {
+        Self::new()
+    }
+}

@@ -256,20 +256,22 @@ impl StridedInterval {
 
 impl PartialOrd for StridedInterval {
     fn partial_cmp(&self, other: &StridedInterval) -> Option<Ordering> {
-        if self.stride() < other.stride() {
-            if self.interval() <= other.interval() {
-                Some(Ordering::Less)
-            } else {
-                None
+        match self.stride().cmp(&other.stride()) {
+            Ordering::Less => {
+                if self.interval() <= other.interval() {
+                    Some(Ordering::Less)
+                } else {
+                    None
+                }
             }
-        } else if self.stride() > other.stride() {
-            if self.interval() >= other.interval() {
-                Some(Ordering::Greater)
-            } else {
-                None
+            Ordering::Greater => {
+                if self.interval() >= other.interval() {
+                    Some(Ordering::Greater)
+                } else {
+                    None
+                }
             }
-        } else {
-            self.interval().partial_cmp(other.interval())
+            Ordering::Equal => self.interval().partial_cmp(other.interval()),
         }
     }
 }

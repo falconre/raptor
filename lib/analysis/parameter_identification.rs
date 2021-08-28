@@ -27,10 +27,10 @@ pub fn parameter_identification<V: ir::Value>(
         let variables_read = rpl
             .instruction()
             .map(|instruction| variables_read(instruction.operation()))
-            .unwrap_or(
+            .unwrap_or_else(|| {
                 rpl.edge()
-                    .and_then(|edge| edge.condition().map(|c| get_variables(c))),
-            );
+                    .and_then(|edge| edge.condition().map(|c| get_variables(c)))
+            });
 
         let variables_read = match variables_read {
             Some(variables_read) => variables_read,

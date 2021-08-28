@@ -317,40 +317,36 @@ pub fn simplify(expr: &Expression<Constant>) -> Result<Option<Expression<Constan
         }
         Expression::Sub(lhs, rhs) => {
             if let Some(rhs_constant) = rhs.as_ref().constant() {
-                match lhs.as_ref() {
-                    // (ll + rr) - rhs
-                    Expression::Add(ll, rr) => {
-                        if let Some(constant) = ll.as_ref().constant() {
+                if let Expression::Add(ll, rr) = lhs.as_ref() {
+                    if let Some(constant) = ll.as_ref().constant() {
+                        return Ok(Some(Expression::add(
+                            constant.sub(rhs_constant)?.into(),
+                            rr.as_ref().clone(),
+                        )?));
+                    }
+                    if let Some(constant) = rr.as_ref().constant() {
+                        return Ok(Some(Expression::add(
+                            ll.as_ref().clone(),
+                            constant.sub(rhs_constant)?.into(),
+                        )?));
+                    }
+                    if let Some(stack_variable) = ll.as_ref().stack_pointer() {
+                        let bits = ll.reference().unwrap().bits();
+                        if let Some(rci64) = rhs_constant.value_i64() {
                             return Ok(Some(Expression::add(
-                                constant.sub(rhs_constant)?.into(),
+                                Reference::new(
+                                    StackVariable::new(
+                                        stack_variable.offset() - rci64 as isize,
+                                        stack_variable.bits(),
+                                    )
+                                    .into(),
+                                    bits,
+                                )
+                                .into(),
                                 rr.as_ref().clone(),
                             )?));
                         }
-                        if let Some(constant) = rr.as_ref().constant() {
-                            return Ok(Some(Expression::add(
-                                ll.as_ref().clone(),
-                                constant.sub(rhs_constant)?.into(),
-                            )?));
-                        }
-                        if let Some(stack_variable) = ll.as_ref().stack_pointer() {
-                            let bits = ll.reference().unwrap().bits();
-                            if let Some(rci64) = rhs_constant.value_i64() {
-                                return Ok(Some(Expression::add(
-                                    Reference::new(
-                                        StackVariable::new(
-                                            stack_variable.offset() - rci64 as isize,
-                                            stack_variable.bits(),
-                                        )
-                                        .into(),
-                                        bits,
-                                    )
-                                    .into(),
-                                    rr.as_ref().clone(),
-                                )?));
-                            }
-                        }
                     }
-                    _ => {}
                 }
                 if rhs_constant.is_zero() {
                     return Ok(Some(lhs.as_ref().clone()));
@@ -399,16 +395,13 @@ pub fn simplify(expr: &Expression<Constant>) -> Result<Option<Expression<Constan
                 if rhs_constant.is_one() && rhs_constant.bits() == 1 {
                     return Ok(Some(lhs.as_ref().clone()));
                 }
-                match lhs.as_ref() {
-                    Expression::Sub(ll, lr) => {
-                        if let Some(constant) = lr.constant() {
-                            return Ok(Some(Expression::cmpeq(
-                                ll.as_ref().clone(),
-                                rhs_constant.add(constant)?.into(),
-                            )?));
-                        }
+                if let Expression::Sub(ll, lr) = lhs.as_ref() {
+                    if let Some(constant) = lr.constant() {
+                        return Ok(Some(Expression::cmpeq(
+                            ll.as_ref().clone(),
+                            rhs_constant.add(constant)?.into(),
+                        )?));
                     }
-                    _ => {}
                 }
             }
 
@@ -417,29 +410,26 @@ pub fn simplify(expr: &Expression<Constant>) -> Result<Option<Expression<Constan
                 .map(|constant| constant.is_zero() && constant.bits() == 1)
                 .unwrap_or(false)
             {
-                match lhs.as_ref() {
-                    Expression::Cmpeq(ll, lr) => {
-                        if lr
-                            .constant()
-                            .map(|constant| constant.is_zero() && constant.bits() == 1)
-                            .unwrap_or(false)
-                        {
-                            return Ok(Some(Expression::cmpeq(
-                                ll.as_ref().clone(),
-                                Constant::new(1, 1).into(),
-                            )?));
-                        } else if lr
-                            .constant()
-                            .map(|constant| constant.is_one())
-                            .unwrap_or(false)
-                        {
-                            return Ok(Some(Expression::cmpeq(
-                                ll.as_ref().clone(),
-                                Constant::new(0, 1).into(),
-                            )?));
-                        }
+                if let Expression::Cmpeq(ll, lr) = lhs.as_ref() {
+                    if lr
+                        .constant()
+                        .map(|constant| constant.is_zero() && constant.bits() == 1)
+                        .unwrap_or(false)
+                    {
+                        return Ok(Some(Expression::cmpeq(
+                            ll.as_ref().clone(),
+                            Constant::new(1, 1).into(),
+                        )?));
+                    } else if lr
+                        .constant()
+                        .map(|constant| constant.is_one())
+                        .unwrap_or(false)
+                    {
+                        return Ok(Some(Expression::cmpeq(
+                            ll.as_ref().clone(),
+                            Constant::new(0, 1).into(),
+                        )?));
                     }
-                    _ => {}
                 }
             }
         }

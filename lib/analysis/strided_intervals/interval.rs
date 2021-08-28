@@ -105,9 +105,7 @@ impl Interval {
     pub fn add(&self, rhs: &Interval) -> Result<Interval> {
         let lo = self.lo().binop(rhs.lo(), |l, r| Ok(l.add(r)?))?;
         let hi = self.hi().binop(rhs.hi(), |l, r| Ok(l.add(r)?))?;
-        if lo.sign_overflow(self.lo())? || hi.sign_overflow(self.hi())? {
-            Ok(Interval::new_top(self.bits()))
-        } else if hi.value_ltu(&lo)? {
+        if lo.sign_overflow(self.lo())? || hi.sign_overflow(self.hi())? || hi.value_ltu(&lo)? {
             Ok(Interval::new_top(self.bits()))
         } else {
             Ok(Interval::new(lo, hi))
@@ -118,9 +116,7 @@ impl Interval {
         // Find the lowest value of the two
         let lo = self.lo().binop(rhs.hi(), |l, r| Ok(l.sub(r)?))?;
         let hi = self.hi().binop(rhs.lo(), |l, r| Ok(l.sub(r)?))?;
-        if lo.sign_overflow(self.lo())? || hi.sign_overflow(self.hi())? {
-            Ok(Interval::new_top(self.bits()))
-        } else if hi.value_ltu(&lo)? {
+        if lo.sign_overflow(self.lo())? || hi.sign_overflow(self.hi())? || hi.value_ltu(&lo)? {
             Ok(Interval::new_top(self.bits()))
         } else {
             Ok(Interval::new(lo, hi))
@@ -131,9 +127,7 @@ impl Interval {
         let lo = self.lo().binop(rhs.lo(), |l, r| Ok(l.mul(r)?))?;
         let hi = self.hi().binop(rhs.hi(), |l, r| Ok(l.mul(r)?))?;
 
-        if lo.sign_overflow(self.lo())? || hi.sign_overflow(self.hi())? {
-            Ok(Interval::new_top(self.bits()))
-        } else if hi.value_ltu(&lo)? {
+        if lo.sign_overflow(self.lo())? || hi.sign_overflow(self.hi())? || hi.value_ltu(&lo)? {
             Ok(Interval::new_top(self.bits()))
         } else {
             Ok(Interval::new(lo, hi))

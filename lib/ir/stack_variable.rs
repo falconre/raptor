@@ -40,22 +40,22 @@ impl StackVariable {
         };
 
         if self.offset() < 0 {
-            format!("var_0x{:X}{}", self.offset() * -1, ssa)
+            format!("var_0x{:X}{}", 0 - self.offset(), ssa)
         } else {
             format!("arg_0x{:X}{}", self.offset(), ssa)
         }
     }
 }
 
-impl Into<Variable> for StackVariable {
-    fn into(self) -> Variable {
-        Variable::StackVariable(self)
+impl From<StackVariable> for Variable {
+    fn from(stack_variable: StackVariable) -> Variable {
+        Variable::StackVariable(stack_variable)
     }
 }
 
-impl<V: Value> Into<Expression<V>> for StackVariable {
-    fn into(self) -> Expression<V> {
-        Expression::LValue(Box::new(LValue::Variable(self.into())))
+impl<V: Value> From<StackVariable> for Expression<V> {
+    fn from(stack_variable: StackVariable) -> Expression<V> {
+        Expression::LValue(Box::new(LValue::Variable(stack_variable.into())))
     }
 }
 

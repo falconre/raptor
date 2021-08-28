@@ -97,3 +97,9 @@ impl<'b> BlockState<'b> {
         self.variables.get(variable)
     }
 }
+
+impl<'b> Default for BlockState<'b> {
+    fn default() -> BlockState<'b> {
+        BlockState::new()
+    }
+}

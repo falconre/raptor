@@ -5,8 +5,8 @@ use falcon::architecture::Architecture;
 use std::cmp::{Ordering, PartialOrd};
 use std::collections::HashMap;
 
-pub fn stack_pointer_offsets<'f>(
-    function: &'f ir::Function<ir::Constant>,
+pub fn stack_pointer_offsets(
+    function: &ir::Function<ir::Constant>,
     architecture: &dyn Architecture,
 ) -> Result<HashMap<ir::ProgramLocation, StackPointerOffsets>> {
     // perform the initial analysis
@@ -17,7 +17,7 @@ pub fn stack_pointer_offsets<'f>(
     // incoming_results won't work here, this is a bit more complicated.
 
     let mut result = HashMap::new();
-    for (location, _) in &stack_pointer_offsets {
+    for location in stack_pointer_offsets.keys() {
         result.insert(
             location.clone(),
             location
@@ -112,7 +112,7 @@ impl StackPointerOffsets {
                         )
                         .into()
                     })
-                    .unwrap_or(expression.clone())),
+                    .unwrap_or_else(|| expression.clone())),
                 ir::LValue::Dereference(dereference) => {
                     Ok(ir::Dereference::new(self.replace(dereference.expression(), bits)?).into())
                 }
@@ -195,7 +195,13 @@ impl StackPointerOffsets {
     }
 }
 
-#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq)]
+impl Default for StackPointerOffsets {
+    fn default() -> StackPointerOffsets {
+        StackPointerOffsets::new()
+    }
+}
+
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 enum AnalysisValue {
     Top(usize),
     Offset(ir::Constant),
@@ -320,7 +326,7 @@ fn eval(expression: &ir::Expression<AnalysisValue>) -> crate::error::Result<Anal
                         reference.bits(),
                     ))
                 })
-                .unwrap_or(AnalysisValue::Top(reference.bits())),
+                .unwrap_or_else(|| AnalysisValue::Top(reference.bits())),
         },
         ir::Expression::Add(lhs, rhs) => eval_binop(&eval(lhs)?, &eval(rhs)?, ir::Constant::add)?,
         ir::Expression::Sub(lhs, rhs) => eval_binop(&eval(lhs)?, &eval(rhs)?, ir::Constant::sub)?,
@@ -368,7 +374,7 @@ impl State {
                 ir::LValue::Variable(variable) => Ok(self
                     .variable(variable)
                     .map(|v| ir::value_expr(v.clone()))
-                    .unwrap_or(ir::value_expr(AnalysisValue::Top(variable.bits())))),
+                    .unwrap_or_else(|| ir::value_expr(AnalysisValue::Top(variable.bits())))),
                 ir::LValue::Dereference(dereference) => {
                     Ok(ir::Dereference::new(self.replace(dereference.expression())?).into())
                 }
@@ -472,7 +478,7 @@ impl State {
         for (variable, analysis_value) in &rhs.variables {
             self.variables
                 .entry(variable.clone())
-                .or_insert(AnalysisValue::Bottom(analysis_value.bits()))
+                .or_insert_with(|| AnalysisValue::Bottom(analysis_value.bits()))
                 .join_mut(analysis_value);
         }
         self
@@ -601,7 +607,7 @@ impl<'f> fixed_point::FixedPointAnalysis<'f, State, ir::Constant> for StackPoint
                         state
                             .load(index)
                             .cloned()
-                            .unwrap_or(AnalysisValue::Top(dst.bits()))
+                            .unwrap_or_else(|| AnalysisValue::Top(dst.bits()))
                     } else {
                         AnalysisValue::Top(dst.bits())
                     };

@@ -54,45 +54,27 @@ impl<V: Value> Operation<V> {
     }
 
     pub fn is_assign(&self) -> bool {
-        match self {
-            Operation::Assign { .. } => true,
-            _ => false,
-        }
+        matches!(self, Operation::Call { .. })
     }
 
     pub fn is_load(&self) -> bool {
-        match self {
-            Operation::Load { .. } => true,
-            _ => false,
-        }
+        matches!(self, Operation::Load { .. })
     }
 
     pub fn is_return(&self) -> bool {
-        match self {
-            Operation::Return(_) => true,
-            _ => false,
-        }
+        matches!(self, Operation::Return(_))
     }
 
     pub fn is_nop(&self) -> bool {
-        match self {
-            Operation::Nop(_) => true,
-            _ => false,
-        }
+        matches!(self, Operation::Nop(_))
     }
 
     pub fn is_branch(&self) -> bool {
-        match self {
-            Operation::Branch { .. } => true,
-            _ => false,
-        }
+        matches!(self, Operation::Branch { .. })
     }
 
     pub fn is_call(&self) -> bool {
-        match self {
-            Operation::Call(_) => true,
-            _ => false,
-        }
+        matches!(self, Operation::Call(_))
     }
 
     pub fn src(&self) -> Option<&Expression<V>> {

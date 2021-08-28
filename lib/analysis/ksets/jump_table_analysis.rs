@@ -195,7 +195,7 @@ impl State {
                 .variables
                 .get(variable)
                 .map(|k| k.join(kset))
-                .unwrap_or(kset.clone());
+                .unwrap_or_else(|| kset.clone());
             self.variables.insert(variable.clone(), kset);
         }
         Ok(self)
@@ -221,7 +221,7 @@ impl State {
                 ir::LValue::Variable(variable) => self
                     .get(variable)
                     .cloned()
-                    .unwrap_or(KSet::new_top(variable.bits())),
+                    .unwrap_or_else(|| KSet::new_top(variable.bits())),
                 ir::LValue::Dereference(dereference) => KSet::new_top(dereference.bits()),
             },
             ir::Expression::RValue(rvalue) => match rvalue.as_ref() {
@@ -287,7 +287,7 @@ impl PartialOrd for State {
             }
         }
 
-        for (variable, _) in rhs.variables() {
+        for variable in rhs.variables().keys() {
             if self.variables().get(variable).is_none() {
                 if order == Ordering::Greater {
                     return None;
@@ -307,7 +307,7 @@ impl<'f, 'j> fixed_point::FixedPointAnalysis<'f, State, ir::Constant> for JumpTa
         location: &ir::RefProgramLocation<ir::Constant>,
         state: Option<State>,
     ) -> Result<State> {
-        let mut state = state.unwrap_or(State::new());
+        let mut state = state.unwrap_or_else(State::new);
 
         match location.function_location() {
             ir::RefFunctionLocation::Instruction(_, instruction) => {

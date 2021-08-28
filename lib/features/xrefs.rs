@@ -85,11 +85,11 @@ impl XRefs {
     pub fn insert(&mut self, from: u64, to: u64) {
         self.from_to
             .entry(from)
-            .or_insert(HashSet::new())
+            .or_insert_with(HashSet::new)
             .insert(to);
         self.to_from
             .entry(to)
-            .or_insert(HashSet::new())
+            .or_insert_with(HashSet::new)
             .insert(from);
     }
 
@@ -106,5 +106,11 @@ impl XRefs {
 
     pub fn to(&self, to: u64) -> Option<&HashSet<u64>> {
         self.to_from.get(&to)
+    }
+}
+
+impl Default for XRefs {
+    fn default() -> Self {
+        Self::new()
     }
 }

@@ -152,16 +152,14 @@ impl<'r, V: Value> RefProgramLocation<'r, V> {
         }
 
         if let Some(function) = function {
-            match RefFunctionLocation::from_address(function, address) {
-                Some(rfl) => return Some(RefProgramLocation::new(function, rfl)),
-                None => {}
+            if let Some(rfl) = RefFunctionLocation::from_address(function, address) {
+                return Some(RefProgramLocation::new(function, rfl));
             }
         }
 
         for function in program.functions() {
-            match RefFunctionLocation::from_address(function, address) {
-                Some(rfl) => return Some(RefProgramLocation::new(function, rfl)),
-                None => {}
+            if let Some(rfl) = RefFunctionLocation::from_address(function, address) {
+                return Some(RefProgramLocation::new(function, rfl));
             }
         }
 

@@ -93,20 +93,17 @@ impl<'t> ProgramTranslator<'t> {
                     None => continue,
                 };
 
-                match instruction.operation() {
-                    ir::Operation::Load { index, .. } => {
-                        if index.all_constants() {
-                            let got_address = match ir::eval(index)?.value_u64() {
-                                Some(address) => address,
-                                None => continue,
-                            };
+                if let ir::Operation::Load { index, .. } = instruction.operation() {
+                    if index.all_constants() {
+                        let got_address = match ir::eval(index)?.value_u64() {
+                            Some(address) => address,
+                            None => continue,
+                        };
 
-                            if let Some(symbol) = self.symbol(got_address).cloned() {
-                                plt_symbols.push(Symbol::new(symbol.name(), plt_address));
-                            }
+                        if let Some(symbol) = self.symbol(got_address).cloned() {
+                            plt_symbols.push(Symbol::new(symbol.name(), plt_address));
                         }
                     }
-                    _ => {}
                 }
             }
         }

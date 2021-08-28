@@ -12,10 +12,7 @@ pub enum Value {
 
 impl Value {
     pub fn is_top(&self) -> bool {
-        match self {
-            Value::Top(_) => true,
-            _ => false,
-        }
+        matches!(self, Value::Top(_))
     }
 
     pub fn value(&self) -> Option<&ir::Constant> {

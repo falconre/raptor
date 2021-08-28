@@ -24,9 +24,9 @@ impl<V: Value> Reference<V> {
     }
 }
 
-impl<V: Value> Into<Expression<V>> for Reference<V> {
-    fn into(self) -> Expression<V> {
-        Expression::RValue(Box::new(RValue::Reference(self)))
+impl<V: Value> From<Reference<V>> for Expression<V> {
+    fn from(reference: Reference<V>) -> Expression<V> {
+        Expression::RValue(Box::new(RValue::Reference(reference)))
     }
 }
 

@@ -17,17 +17,11 @@ pub enum ParameterType {
 
 impl ParameterType {
     pub fn void_pointer(&self) -> bool {
-        match self {
-            ParameterType::VoidPointer => true,
-            _ => false,
-        }
+        matches!(self, ParameterType::VoidPointer)
     }
 
     pub fn unbounded_array(&self) -> bool {
-        match self {
-            ParameterType::UnboundedArray => true,
-            _ => false,
-        }
+        matches!(self, ParameterType::UnboundedArray)
     }
 
     pub fn bounded_array(&self) -> Option<usize> {
@@ -45,10 +39,7 @@ impl ParameterType {
     }
 
     pub fn value(&self) -> bool {
-        match self {
-            ParameterType::Value => true,
-            _ => false,
-        }
+        matches!(self, ParameterType::Value)
     }
 }
 

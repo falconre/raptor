@@ -4,8 +4,8 @@ use crate::ir;
 use std::collections::HashMap;
 
 /// Compute reaching definitions for the given function.
-pub fn reaching_definitions<'r, V: ir::Value>(
-    function: &'r ir::Function<V>,
+pub fn reaching_definitions<V: ir::Value>(
+    function: &ir::Function<V>,
 ) -> Result<HashMap<ir::ProgramLocation, LocationSet>> {
     let reaching_definitions = ReachingDefinitions { function };
 

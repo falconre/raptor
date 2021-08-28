@@ -13,8 +13,8 @@ pub use self::interval::Interval;
 pub use self::strided_interval::StridedInterval;
 pub use self::value::Value;
 
-pub fn strided_intervals<'f>(
-    function: &'f ir::Function<ir::Constant>,
+pub fn strided_intervals(
+    function: &ir::Function<ir::Constant>,
 ) -> Result<HashMap<ir::ProgramLocation, State>> {
     let strided_interval_analysis = StridedIntervalAnalysis::new(function)?;
 
@@ -66,7 +66,7 @@ impl State {
                 ir::LValue::Variable(variable) => self
                     .variable(variable)
                     .cloned()
-                    .unwrap_or(StridedInterval::new_top(e.bits())),
+                    .unwrap_or_else(|| StridedInterval::new_top(e.bits())),
                 ir::LValue::Dereference(_) => StridedInterval::new_top(e.bits()),
             },
             ir::Expression::RValue(rvalue) => match rvalue.as_ref() {
@@ -172,7 +172,7 @@ impl PartialOrd for State {
             }
         }
 
-        for (variable, _rhs) in other.variables() {
+        for variable in other.variables().keys() {
             if self.variables.get(variable).is_none() {
                 if order == Ordering::Greater {
                     return None;
@@ -183,6 +183,12 @@ impl PartialOrd for State {
         }
 
         Some(order)
+    }
+}
+
+impl Default for State {
+    fn default() -> State {
+        State::new()
     }
 }
 

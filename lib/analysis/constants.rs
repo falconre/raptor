@@ -16,8 +16,8 @@ use std::cmp::{Ordering, PartialOrd};
 use std::collections::HashMap;
 
 /// Compute constants for the given function
-pub fn constants<'r>(
-    function: &'r ir::Function<ir::Constant>,
+pub fn constants(
+    function: &ir::Function<ir::Constant>,
     backing: Option<&falcon::memory::backing::Memory>,
 ) -> Result<HashMap<ir::ProgramLocation, Constants>> {
     let constants_analysis = ConstantsAnalysis::new(backing);
@@ -84,45 +84,49 @@ pub struct Constants {
 
 impl PartialOrd for Constants {
     fn partial_cmp(&self, other: &Constants) -> Option<Ordering> {
-        if self.constants.len() < other.constants.len() {
-            for (ls, lc) in self.constants.iter() {
-                if !other.constants.get(ls).map(|rc| lc <= rc).unwrap_or(false) {
-                    return None;
-                }
-            }
-            Some(Ordering::Less)
-        } else if self.constants.len() > other.constants.len() {
-            for (ls, lc) in other.constants.iter() {
-                if !self.constants.get(ls).map(|rc| lc <= rc).unwrap_or(false) {
-                    return None;
-                }
-            }
-            Some(Ordering::Greater)
-        } else {
-            let mut order = Ordering::Equal;
-            for (ls, lc) in &self.constants {
-                match other.constants.get(ls) {
-                    Some(rc) => {
-                        if lc < rc {
-                            if order <= Ordering::Equal {
-                                order = Ordering::Less;
-                            } else {
-                                return None;
-                            }
-                        } else if lc > rc {
-                            if order >= Ordering::Equal {
-                                order = Ordering::Greater;
-                            } else {
-                                return None;
-                            }
-                        }
-                    }
-                    None => {
+        match self.constants.len().cmp(&other.constants.len()) {
+            Ordering::Less => {
+                for (ls, lc) in self.constants.iter() {
+                    if !other.constants.get(ls).map(|rc| lc <= rc).unwrap_or(false) {
                         return None;
                     }
                 }
+                Some(Ordering::Less)
             }
-            Some(order)
+            Ordering::Greater => {
+                for (ls, lc) in other.constants.iter() {
+                    if !self.constants.get(ls).map(|rc| lc <= rc).unwrap_or(false) {
+                        return None;
+                    }
+                }
+                Some(Ordering::Greater)
+            }
+            Ordering::Equal => {
+                let mut order = Ordering::Equal;
+                for (ls, lc) in &self.constants {
+                    match other.constants.get(ls) {
+                        Some(rc) => {
+                            if lc < rc {
+                                if order <= Ordering::Equal {
+                                    order = Ordering::Less;
+                                } else {
+                                    return None;
+                                }
+                            } else if lc > rc {
+                                if order >= Ordering::Equal {
+                                    order = Ordering::Greater;
+                                } else {
+                                    return None;
+                                }
+                            }
+                        }
+                        None => {
+                            return None;
+                        }
+                    }
+                }
+                Some(order)
+            }
         }
     }
 }
@@ -309,6 +313,12 @@ impl Constants {
     }
 }
 
+impl Default for Constants {
+    fn default() -> Constants {
+        Constants::new()
+    }
+}
+
 // We require a struct to implement methods for our analysis over.
 struct ConstantsAnalysis<'c> {
     backing: Option<&'c falcon::memory::backing::Memory>,
@@ -369,11 +379,10 @@ impl<'r, 'c> fixed_point::FixedPointAnalysis<'r, Constants, ir::Constant>
                                 })
                                 .unwrap_or(Constant::Top);
                             state.set_variable(dst.clone(), value);
-                            state
                         } else {
                             state.set_variable(dst.clone(), Constant::Top);
-                            state
                         }
+                        state
                     } else {
                         state.set_variable(dst.clone(), Constant::Top);
                         state
@@ -413,7 +422,7 @@ impl<'r, 'c> fixed_point::FixedPointAnalysis<'r, Constants, ir::Constant>
         Ok(state)
     }
 
-    fn join<'j>(&self, state0: Constants, state1: &'j Constants) -> Result<Constants> {
+    fn join(&self, state0: Constants, state1: &Constants) -> Result<Constants> {
         Ok(state0.join(state1))
     }
 }

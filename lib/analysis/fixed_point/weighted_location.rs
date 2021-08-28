@@ -25,13 +25,7 @@ impl WeightedLocation {
 
 impl PartialOrd for WeightedLocation {
     fn partial_cmp(&self, other: &WeightedLocation) -> Option<Ordering> {
-        if self.weight() < other.weight() {
-            Some(Ordering::Less)
-        } else if self.weight() > other.weight() {
-            Some(Ordering::Greater)
-        } else {
-            Some(Ordering::Equal)
-        }
+        Some(self.weight().cmp(&other.weight()))
     }
 }
 

@@ -98,60 +98,55 @@ where
         //         .apply(function)
         //         .ok_or("Failed to apply weighted location")?;
 
-        loop {
-            // Join all previous states for this location
-            let state =
-                rpl.backward()
-                    .iter()
-                    .fold(None, |s, p| match states.get(&p.clone().into()) {
-                        Some(in_state) => match s {
-                            Some(s) => Some(analysis.join(s, in_state).unwrap()),
-                            None => Some(in_state.clone()),
-                        },
-                        None => s,
-                    });
+        // Join all previous states for this location
+        let state = rpl
+            .backward()
+            .iter()
+            .fold(None, |s, p| match states.get(&p.clone().into()) {
+                Some(in_state) => match s {
+                    Some(s) => Some(analysis.join(s, in_state).unwrap()),
+                    None => Some(in_state.clone()),
+                },
+                None => s,
+            });
 
-            let state = analysis.trans(&rpl, state)?;
+        let state = analysis.trans(&rpl, state)?;
 
-            // If nothing changes, go to the next item in the queue.
-            if let Some(in_state) = states.get(location) {
-                if state
-                    .partial_cmp(in_state)
-                    .expect("partial_cmp between states was none")
-                    == std::cmp::Ordering::Less
-                {
-                    panic!("State is less");
-                }
-                if state == *in_state {
-                    break;
-                }
+        // If nothing changes, go to the next item in the queue.
+        if let Some(in_state) = states.get(location) {
+            if state
+                .partial_cmp(in_state)
+                .expect("partial_cmp between states was none")
+                == std::cmp::Ordering::Less
+            {
+                panic!("State is less");
             }
-
-            // Update the state for this location
-            states.insert(location.clone(), state);
-
-            // For all locations left to analyze
-            for successor in rpl.forward() {
-                // Create a weighted location for this successor location. If
-                // there is no block index (it's an edge), use the index of the
-                // predecessor/head of the edge
-
-                let weighted_location = match successor.function_location() {
-                    ir::RefFunctionLocation::EmptyBlock(block)
-                    | ir::RefFunctionLocation::Instruction(block, _) => WeightedLocation::new(
-                        block_weights[&block.index()],
-                        successor.clone().into(),
-                    ),
-                    ir::RefFunctionLocation::Edge(edge) => {
-                        WeightedLocation::new(block_weights[&edge.head()], successor.clone().into())
-                    }
-                };
-                if !in_queue.contains(&weighted_location) {
-                    queue.push(weighted_location);
-                }
+            if state == *in_state {
+                break;
             }
+        }
 
-            break;
+        // Update the state for this location
+        states.insert(location.clone(), state);
+
+        // For all locations left to analyze
+        for successor in rpl.forward() {
+            // Create a weighted location for this successor location. If
+            // there is no block index (it's an edge), use the index of the
+            // predecessor/head of the edge
+
+            let weighted_location = match successor.function_location() {
+                ir::RefFunctionLocation::EmptyBlock(block)
+                | ir::RefFunctionLocation::Instruction(block, _) => {
+                    WeightedLocation::new(block_weights[&block.index()], successor.clone().into())
+                }
+                ir::RefFunctionLocation::Edge(edge) => {
+                    WeightedLocation::new(block_weights[&edge.head()], successor.clone().into())
+                }
+            };
+            if !in_queue.contains(&weighted_location) {
+                queue.push(weighted_location);
+            }
         }
     }
 
@@ -174,7 +169,7 @@ where
     V: ir::Value,
 {
     let mut new_result = HashMap::new();
-    for (location, _) in &result {
+    for location in result.keys() {
         let mut state = new_state();
         let rpl = location.apply(function)?;
         for location in rpl.backward() {
